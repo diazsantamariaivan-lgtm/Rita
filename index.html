@@ -110,6 +110,8 @@ html[data-theme="sun"] body{font-weight:600}
 .sigpad{width:100%;height:150px;border:2px dashed var(--mut);border-radius:12px;background:#fff;touch-action:none;display:block}
 .brand{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--acc);margin-bottom:2px}
 @media (min-width:900px){#app{max-width:760px}.fab{right:calc(50% - 364px)}.fab.mic{right:calc(50% - 296px)}}
+
+.seg{overflow-x:auto;gap:2px;scrollbar-width:none}.seg::-webkit-scrollbar{display:none}.seg button{flex:none;padding:8px 11px;white-space:nowrap}
 .phgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px}.ph{padding:0;border:0;border-radius:10px;overflow:hidden;aspect-ratio:1;background:var(--pri2)}.ph img{width:100%;height:100%;object-fit:cover;display:block}
 #lock{position:fixed;inset:0;z-index:300;background:var(--bg);display:none;align-items:center;justify-content:center;text-align:center}
 .lk{width:min(320px,90vw)}.lkdots{display:flex;gap:14px;justify-content:center;margin:6px 0 18px}.lkdots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--pri)}.lkdots i.on{background:var(--pri)}
@@ -129,11 +131,11 @@ html[data-theme="sun"] body{font-weight:600}
 'use strict';
 /* ======== Datos ======== */
 const KEY = 'secretaria_v1';
-function blank(){ return {events:[],tasks:[],clients:[],notes:[],jobs:[],expenses:[],shop:[],notified:{},settings:{name:'Iván',remind:15,hourStart:'09:00',voiceOut:true,speakReminders:true,rate:1,lastBackup:'',brief:true,briefTime:'08:00',hourRate:0,quoteUrl:'',weekly:true,timer:null,syncNudgeOff:false,lastUpdCheck:0,tpl:null,bizName:'',bizPhone:'',bizNif:'',theme:'auto',zoom:100,ivaPct:21,ivaIncl:true,home:'Renedo de Piélagos',gemKey:'',gemModel:'gemini-3.8-flash',icon:null,wx:null,gToken:'',gId:'',gKey:'',gLast:0,ntfy:false,ntfyTopic:'',ntfyHide:false,ntfyMap:{}}}; }
+function blank(){ return {events:[],tasks:[],clients:[],notes:[],jobs:[],expenses:[],shop:[],quotes:[],catalog:[],suppliers:[],notified:{},settings:{name:'Iván',remind:15,hourStart:'09:00',voiceOut:true,speakReminders:true,rate:1,lastBackup:'',brief:true,briefTime:'08:00',hourRate:0,quoteUrl:'',weekly:true,timer:null,syncNudgeOff:false,lastUpdCheck:0,tpl:null,qMargin:30,qLabor:0,qTravel:0,qNotes:'Presupuesto válido 30 días.',bizName:'',bizPhone:'',bizNif:'',theme:'auto',zoom:100,ivaPct:21,ivaIncl:true,home:'Renedo de Piélagos',gemKey:'',gemModel:'gemini-3.8-flash',icon:null,wx:null,gToken:'',gId:'',gKey:'',gLast:0,ntfy:false,ntfyTopic:'',ntfyHide:false,ntfyMap:{}}}; }
 function load(){
   try{
     const d = JSON.parse(localStorage.getItem(KEY));
-    if(d && d.events){ d.settings = Object.assign(blank().settings, d.settings||{}); d.notified = d.notified||{}; d.notes = d.notes||[]; d.jobs = d.jobs||[]; d.expenses = d.expenses||[]; d.shop = d.shop||[]; return d; }
+    if(d && d.events){ d.settings = Object.assign(blank().settings, d.settings||{}); d.notified = d.notified||{}; d.notes = d.notes||[]; d.jobs = d.jobs||[]; d.expenses = d.expenses||[]; d.shop = d.shop||[]; d.quotes = d.quotes||[]; d.catalog = d.catalog||[]; d.suppliers = d.suppliers||[]; return d; }
   }catch(e){}
   return blank();
 }
@@ -311,6 +313,7 @@ function viewAjustes(){
    ${syncBlock()}
    ${ntfyBlock()}
    ${bizSetBlock()}
+   ${qSetBlock()}
    ${tplBlock()}
    ${vencBlock()}
    ${importBlock()}
@@ -622,7 +625,7 @@ function testNotif(){
 }
 
 /* ======== ALMACENAMIENTO SEGURO ======== */
-const COLS = ['events','tasks','clients','notes','jobs','expenses','shop'];
+const COLS = ['events','tasks','clients','notes','jobs','expenses','shop','quotes','catalog','suppliers'];
 const hhmm = ts => new Date(ts||Date.now()).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
 
 // Marca cada elemento cambiado con su fecha (u) y anota los borrados (del): permite fusionar sin perder nada.
@@ -1234,7 +1237,7 @@ function startListen(){
 function toggleListen(){ if(listening){ stopRec(); setStatus('Pulsa el micrófono para hablar.'); } else startListen(); }
 function stopVoice(){ voiceOpen = false; pending = null; stopRec(); try{ speechSynthesis.cancel(); }catch(_){} }
 
-const EXAMPLES = ['¿Qué tengo hoy?','Ruta de hoy','¿Quién me debe dinero?','He enviado presupuesto a Gómez de 1200 euros','Gómez me ha pagado 450 euros','Haz el parte de la cancela de Marta','Informe del trimestre','Muéstrame lo de Gómez','¿Qué garantías vencen pronto?','Empiezo en la cancela de Marta','Termino','Necesito comprar tornillos y discos de corte','Gasolina 40 euros para la cancela de Marta','¿Cuánto llevo gastado en la cancela de Marta?','¿Cuánto he ganado este mes?','Confirma la cita con Gómez por WhatsApp','¿Qué tiempo hace mañana?','Recuérdame llamar a Gómez mañana a las 9','Anota: pedir 20 metros de perfil','Llama a Gómez','Resumen del día'];
+const EXAMPLES = ['¿Qué tengo hoy?','Ruta de hoy','¿Quién me debe dinero?','He enviado presupuesto a Gómez de 1200 euros','Gómez me ha pagado 450 euros','Haz el parte de la cancela de Marta','Informe del trimestre','Muéstrame lo de Gómez','¿Qué garantías vencen pronto?','Empiezo en la cancela de Marta','Termino','Necesito comprar tornillos y discos de corte','Gasolina 40 euros para la cancela de Marta','¿Cuánto llevo gastado en la cancela de Marta?','¿Cuánto he ganado este mes?','Confirma la cita con Gómez por WhatsApp','¿Qué tiempo hace mañana?','Recuérdame llamar a Gómez mañana a las 9','Anota: pedir 20 metros de perfil','Llama a Gómez','Haz un presupuesto para Marta','Añade 4 metros de perfil al presupuesto de Marta','¿Qué trabajos me dejan más margen?','Resumen del día'];
 function openVoice(cmd){
   voiceOpen = true;
   sheet(`<h3>🎙️ Rita</h3>
@@ -1278,6 +1281,12 @@ function handle(raw){
   if(RE_WARR.test(F)) return warrantyVoice();
   if(RE_FIND.test(F)) return findVoice(c);
   if(RE_PARTE.test(F)) return parteVoice(c);
+  if(RE_QADD.test(F)) return qAddVoice(c);
+  if(RE_QNEW.test(F)) return qNewVoice(c);
+  if(RE_BUY.test(F) && supFind(c) && buyVoice(c)) return;
+  if(RE_LASTP.test(F)) return lastPriceVoice(c);
+  if(RE_RENT.test(F)) return rentVoice();
+  if(RE_QTOT.test(F)) return qTotVoice(c);
   if(RE_TSTOP.test(F)) return timerStopVoice();
   if(RE_TSTART.test(F)) return timerStartVoice(c);
   if(RE_HOURSQ.test(F)) return hoursQVoice(c);
@@ -1497,7 +1506,7 @@ function briefing(){
   reply(s);
 }
 function help(){
-  reply('Puedes decirme, por ejemplo: «¿Qué tengo hoy?». «Recuérdame llamar a Gómez mañana a las nueve». «Apunta cita con Marta el viernes a las cinco y media». «Anota: pedir perfiles». «Llama a Gómez». «¿Cuál es mi próxima cita?». «Marca como hecha la llamada de Gómez». «Pospón la cita de Gómez para el lunes». «¿Qué tiempo hace mañana?». «Últimas noticias». «¿A cuánto está el dólar?». Y, si has puesto tu clave de Google, cualquier pregunta: la busco en internet. «Gómez me debe 450 euros». «He enviado presupuesto a Gómez de 1200 euros». «Gasolina 40 euros para la cancela de Marta». «¿Cuánto llevo gastado en la cancela de Marta?». «¿Cuánto he ganado este mes?». «Empiezo en la cancela de Marta», y al acabar, «termino». «Necesito comprar tornillos». «Haz el parte de la cancela de Marta». «Informe del trimestre». «Muéstrame lo de Gómez». «¿Qué garantías vencen pronto?». «Ruta de hoy». «Confirma la cita con Gómez por WhatsApp». «Deshaz eso».');
+  reply('Puedes decirme, por ejemplo: «¿Qué tengo hoy?». «Recuérdame llamar a Gómez mañana a las nueve». «Apunta cita con Marta el viernes a las cinco y media». «Anota: pedir perfiles». «Llama a Gómez». «¿Cuál es mi próxima cita?». «Marca como hecha la llamada de Gómez». «Pospón la cita de Gómez para el lunes». «¿Qué tiempo hace mañana?». «Últimas noticias». «¿A cuánto está el dólar?». Y, si has puesto tu clave de Google, cualquier pregunta: la busco en internet. «Gómez me debe 450 euros». «He enviado presupuesto a Gómez de 1200 euros». «Gasolina 40 euros para la cancela de Marta». «¿Cuánto llevo gastado en la cancela de Marta?». «¿Cuánto he ganado este mes?». «Empiezo en la cancela de Marta», y al acabar, «termino». «Necesito comprar tornillos». «Haz el parte de la cancela de Marta». «Informe del trimestre». «Muéstrame lo de Gómez». «¿Qué garantías vencen pronto?». «Ruta de hoy». «Confirma la cita con Gómez por WhatsApp». «Haz un presupuesto para Marta». «Añade cuatro metros de perfil al presupuesto de Marta». «Mano de obra seis horas al presupuesto de Marta». «¿A cuánto compré el tubo?». «¿Qué trabajos me dejan más margen?». «Deshaz eso».');
 }
 function undo(){
   if(!lastAction) return reply('No tengo nada que deshacer.');
@@ -2006,8 +2015,13 @@ function upsertJobTasks(j){
 /* --- pantalla Negocio --- */
 function viewClientes(){
   const seg = (k,l) => `<button class="${bizTab===k?'on':''}" onclick="bizTab='${k}';render()">${l}</button>`;
-  const head = `<header class="top"><h1>Negocio</h1><p>Clientes, trabajos y gastos</p></header><div class="seg">${seg('cli','Clientes')}${seg('jobs','Trabajos')}${seg('gas','Gastos')}${seg('shop','Material')}</div>`;
+  const head = `<header class="top"><h1>Negocio</h1><p>Clientes, trabajos y gastos</p></header><div class="seg">${seg('cli','Clientes')}${seg('jobs','Trabajos')}${seg('quo','Presupuestos')}${seg('gas','Gastos')}${seg('shop','Material')}${seg('cat','Catálogo')}${seg('sup','Proveedores')}${seg('rent','Rentabilidad')}</div>`;
+  setTimeout(() => { const b = document.querySelector('.seg button.on'); if(b) b.scrollIntoView({inline:'center', block:'nearest'}); }, 0);
   if(bizTab==='jobs') return head + viewJobs();
+  if(bizTab==='quo') return head + viewQuotes();
+  if(bizTab==='cat') return head + viewCatalog();
+  if(bizTab==='sup') return head + viewSuppliers();
+  if(bizTab==='rent') return head + viewRent();
   if(bizTab==='gas') return head + viewGastos();
   if(bizTab==='shop') return head + viewShop();
   return head + viewClientesList(true) +
@@ -2042,10 +2056,12 @@ function jobForm(id, pre){
   <div><label>Preguntar a los…</label><select id="j_follow">${[3,5,7,10,15,30].map(d => `<option value="${d}" ${(+j.followDays||7)===d?'selected':''}>${d} días</option>`).join('')}</select></div></div>
   <div class="two"><div><label>Cobrado hasta ahora (€)</label><input id="j_paid" type="number" inputmode="decimal" step="0.01" value="${j.paid}"></div>
   <div><label>Cobro previsto</label><input id="j_due" type="date" value="${j.dueDate||''}"></div></div>
+  <label>Tipo de trabajo</label><select id="j_type"><option value="">Automático</option>${JTYPES.map(t => `<option ${j.type===t?'selected':''}>${t}</option>`).join('')}</select>
   <label>Notas y medidas</label><textarea id="j_notes" placeholder="Ej: hueco 2,40 × 2,10, guía a la izquierda">${esc(j.notes)}</textarea>
   <label>Ofrecer revisión al terminar</label><select id="j_rev"><option value="">No</option>${[6,12,24].map(m => `<option value="${m}" ${+j.revMonths===m?'selected':''}>A los ${m} meses</option>`).join('')}</select>
   <label>Garantía de la instalación</label><select id="j_war"><option value="">Sin garantía</option>${[12,24,36,60].map(m => `<option value="${m}" ${+j.warrantyMonths===m?'selected':''}>${m/12} ${m>12?'años':'año'}</option>`).join('')}</select>
   ${id ? cuentasBlock(j) + partesList(j) : ''}
+  ${id && j.quoteId && quoteOf(j.quoteId) ? `<div class="acts"><button class="btn sec" onclick="quoteForm('${j.quoteId}')">🧮 Ver presupuesto</button></div>` : ''}
   ${photoBlock()}
   <div class="acts"><button class="btn" onclick="saveJob(${id?`'${id}'`:'null'})">Guardar</button><button class="btn sec" onclick="closeSheet()">Cancelar</button></div>
   ${id?`<div class="acts"><button class="btn sec" onclick="parteForm('${id}')">🧾 Parte de trabajo</button>${jobWaBtn(j)}${revWaBtn(j)}<button class="btn bad" onclick="delJob('${id}')">Borrar</button></div>`:''}`);
@@ -2069,8 +2085,9 @@ function saveJob(id){
   const old = id ? S.jobs.find(x => x.id===id) : null;
   const status = val('j_status'); let paid = parseFloat(val('j_paid')) || 0; const amount = parseFloat(val('j_amount')) || 0;
   if(status==='cobrado' && paid < amount) paid = amount;
-  const o = {id:id||uid(), title, clientId:val('j_client'), amount, status, sentDate:val('j_sent') || (status==='presupuestado' ? today() : ''), followDays:+val('j_follow')||7,
+  const o = {...(old||{}), id:id||uid(), type:val('j_type'), title, clientId:val('j_client'), amount, status, sentDate:val('j_sent') || (status==='presupuestado' ? today() : ''), followDays:+val('j_follow')||7,
     dueDate:val('j_due'), paid, notes:val('j_notes').trim(), photos:phCtx.list.slice(), doneDate:(old && old.doneDate) || '', revMonths:+val('j_rev')||0, warrantyMonths:+val('j_war')||0, payments:(old && old.payments ? old.payments.slice() : [])};
+  if(old && +old.base > 0 && amount !== +old.amount) delete o.base;
   if(status==='terminado' && !(old && old.status==='terminado')) o.doneDate = today();
   if((status==='terminado' || status==='cobrado') && !o.doneDate) o.doneDate = today();
   const delta = paid - ((old && +old.paid) || 0); if(delta > 0) o.payments.push({date:today(), amount:delta});
@@ -2123,7 +2140,7 @@ function expForm(id, pre){
 function saveExp(id){
   const concept = val('x_concept').trim(), amount = parseFloat(val('x_amount'));
   if(!concept) return toast('Pon el concepto'); if(!(amount >= 0)) return toast('Pon el importe');
-  const o = {id:id||uid(), concept, amount, date:val('x_date') || today(), cat:val('x_cat'), clientId:val('x_client'), jobId:val('x_job'), photos:phCtx.list.slice()};
+  const o = {...(id ? (S.expenses.find(x => x.id===id)||{}) : {}), id:id||uid(), concept, amount, date:val('x_date') || today(), cat:val('x_cat'), clientId:val('x_client'), jobId:val('x_job'), photos:phCtx.list.slice()};
   const jb = S.jobs.find(j => j.id===o.jobId); if(jb && !o.clientId) o.clientId = jb.clientId || '';
   if(id) S.expenses = S.expenses.map(x => x.id===id ? o : x); else S.expenses.push(o);
   const back = expReturn; expReturn = null;
@@ -3043,13 +3060,14 @@ function parteForm(jobId, parteId){
   const cl = client(j.clientId), old = parteId ? (j.partes||[]).find(p => p.id===parteId) : null;
   const mats = old ? old.materials : jobExp(j).filter(e => e.cat==='Material' || e.cat==='Herramientas').map(e => e.concept).join('\n');
   const mins = old ? (old.min||0) : jobMin(j);
-  parteCtx = {jobId, parteId:parteId||null};
+  parteCtx = {jobId, parteId:parteId||null}; ptPhInit(old);
   sheet(`<h3>🧾 Parte de trabajo</h3>
   <p class="note" style="margin:0">${esc(j.title)}${cl ? ' · '+esc(cl.name) : ''}</p>
   <div class="two"><div><label>Fecha</label><input id="pt_date" type="date" value="${old ? old.date : today()}"></div><div><label>Horas (h)</label><input id="pt_h" type="number" step="0.25" inputmode="decimal" value="${mins ? Math.round(mins/60*100)/100 : ''}"></div></div>
   <label>Trabajo realizado</label><textarea id="pt_work" style="min-height:90px" placeholder="Ej: montaje de cancela corredera, motor y fotocélulas">${esc(old ? old.work : (j.notes || j.title))}</textarea>
   <label>Materiales</label><textarea id="pt_mat" style="min-height:70px" placeholder="Uno por línea">${esc(mats)}</textarea>
   <label>Observaciones</label><textarea id="pt_obs" style="min-height:56px">${esc(old ? old.obs : '')}</textarea>
+  ${ptPhBlock()}
   <label>Nombre de quien firma</label><input id="pt_name" value="${esc(old ? old.signer : (cl ? waName(cl) : ''))}">
   <label>Firma del cliente (con el dedo)</label><canvas id="pt_sig" class="sigpad" width="600" height="220"></canvas>
   <div class="acts" style="margin-top:6px"><button class="btn sec sm" onclick="sigInit('')">Borrar firma</button></div>
@@ -3058,8 +3076,8 @@ function parteForm(jobId, parteId){
   <p class="note">La firma sirve como conformidad del cliente con el trabajo hecho; no sustituye a un contrato.</p>`);
   sigInit(old ? old.sig : '');
 }
-function sigInit(dataUrl){
-  const cv = $('#pt_sig'); if(!cv) return; const g = cv.getContext('2d');
+function sigInit(dataUrl, cid){
+  const cv = $('#' + (cid || 'pt_sig')); if(!cv) return; const g = cv.getContext('2d');
   g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.strokeStyle = '#111'; g.lineWidth = 5; g.lineCap = 'round'; g.lineJoin = 'round'; sigHas = false;
   if(dataUrl){ const im = new Image(); im.onload = () => { g.drawImage(im, 0, 0, cv.width, cv.height); sigHas = true; }; im.src = dataUrl; }
   const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height]; };
@@ -3072,7 +3090,7 @@ function parteCollect(){
   const work = val('pt_work').trim(); if(!work){ toast('Escribe el trabajo realizado'); return null; }
   let sig = '';
   if(sigHas){ const src = $('#pt_sig'), t = document.createElement('canvas'); t.width = 360; t.height = 132; const g = t.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0,0,360,132); g.drawImage(src, 0, 0, 360, 132); sig = t.toDataURL('image/png'); }
-  return {j, d:{id:parteCtx.parteId || uid(), date:val('pt_date') || today(), min:Math.round((parseFloat(val('pt_h')) || 0) * 60), work, materials:val('pt_mat').trim(), obs:val('pt_obs').trim(), signer:val('pt_name').trim(), sig}};
+  return {j, d:{id:parteCtx.parteId || uid(), date:val('pt_date') || today(), min:Math.round((parseFloat(val('pt_h')) || 0) * 60), work, materials:val('pt_mat').trim(), obs:val('pt_obs').trim(), signer:val('pt_name').trim(), sig, before:ptPh.before.slice(), after:ptPh.after.slice()}};
 }
 function parteSave(quiet){
   const r = parteCollect(); if(!r) return null;
@@ -3085,9 +3103,9 @@ function parteRows(d, j){
     rows:[['Fecha', shortDate(d.date)+' '+d.date.slice(0,4)], ['Cliente', cl ? cl.name : '—'], ['Dirección', cl && cl.address ? cl.address : ''], ['Trabajo', j.title], ['Horas', d.min ? fmtMin(d.min) : ''],
       ['Trabajo realizado', d.work], ['Materiales', d.materials], ['Observaciones', d.obs]].filter(r => r[1])};
 }
-function renderParteCanvas(d, j, sigImg){
-  const info = parteRows(d, j), W = 900, M = 48, cv = document.createElement('canvas'); cv.width = W; cv.height = 2600;
-  const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, 2600);
+function renderParteCanvas(d, j, sigImg, photos){
+  const info = parteRows(d, j), W = 900, M = 48, cv = document.createElement('canvas'); const H = 2600 + ptExtra(photos); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
   g.fillStyle = '#1d4e89'; g.fillRect(0, 0, W, 120);
   g.fillStyle = '#fff'; g.textBaseline = 'alphabetic'; g.font = '800 42px system-ui,Arial,sans-serif'; g.fillText('PARTE DE TRABAJO', M, 76);
   g.font = '500 24px system-ui,Arial,sans-serif'; g.textAlign = 'right'; g.fillText(info.me, W-M, 56); if(info.phone || info.nif) g.fillText([info.phone, info.nif].filter(Boolean).join(' · '), W-M, 92); g.textAlign = 'left';
@@ -3097,6 +3115,7 @@ function renderParteCanvas(d, j, sigImg){
     g.fillStyle = '#667385'; g.font = '700 20px system-ui,Arial,sans-serif'; g.fillText(k.toUpperCase(), M, y); y += 34;
     g.fillStyle = '#111'; g.font = '500 28px system-ui,Arial,sans-serif'; wrap(v, M, W - 2*M, 38); y += 18;
   }
+  y = ptDrawPhotos(g, photos, y, W, M);
   y += 10; g.fillStyle = '#667385'; g.font = '700 20px system-ui,Arial,sans-serif'; g.fillText('CONFORME DEL CLIENTE', M, y); y += 16;
   g.strokeStyle = '#c8d0db'; g.lineWidth = 2; g.strokeRect(M, y, 420, 154);
   if(sigImg && d.sig){ try{ g.drawImage(sigImg, M+4, y+4, 412, 146); }catch(_){} }
@@ -3107,7 +3126,7 @@ function renderParteCanvas(d, j, sigImg){
 async function parteShare(){
   const r = parteSave(true); if(!r) return;
   let sigImg = null; if(r.d.sig){ sigImg = new Image(); await new Promise(res => { sigImg.onload = res; sigImg.onerror = res; sigImg.src = r.d.sig; }); }
-  const cv = renderParteCanvas(r.d, r.j, sigImg);
+  const cv = renderParteCanvas(r.d, r.j, sigImg, await ptLoadImgs(r.d));
   cv.toBlob(async blob => {
     const name = 'parte-'+r.d.date+'.png', f = new File([blob], name, {type:'image/png'});
     try{
@@ -3116,17 +3135,18 @@ async function parteShare(){
     download(name, blob, 'image/png'); toast('Parte guardado como imagen: envíalo desde tus descargas');
   }, 'image/png');
 }
-function parteHtml(d, j){
+function parteHtml(d, j, ph){
   const info = parteRows(d, j);
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Parte de trabajo</title><style>body{font:15px system-ui,Arial;margin:32px;color:#111}.h{background:#1d4e89;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-radius:6px}.h b{font-size:22px}.k{color:#667385;font-size:11px;font-weight:700;text-transform:uppercase;margin-top:14px}.v{white-space:pre-wrap;font-size:16px}.sig{border:1px solid #c8d0db;width:300px;height:110px;margin-top:6px}.f{color:#999;font-size:11px;margin-top:30px}</style></head><body>
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Parte de trabajo</title><style>body{font:15px system-ui,Arial;margin:32px;color:#111}.h{background:#1d4e89;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-radius:6px}.h b{font-size:22px}.k{color:#667385;font-size:11px;font-weight:700;text-transform:uppercase;margin-top:14px}.v{white-space:pre-wrap;font-size:16px}.sig{border:1px solid #c8d0db;width:300px;height:110px;margin-top:6px}.f{color:#999;font-size:11px;margin-top:30px}.pg{display:flex;flex-wrap:wrap;gap:6px}.pg img{width:48%;height:200px;object-fit:cover;border-radius:4px}</style></head><body>
   <div class="h"><b>PARTE DE TRABAJO</b><span style="text-align:right">${esc(info.me)}<br>${esc([info.phone, info.nif].filter(Boolean).join(' · '))}</span></div>
   ${info.rows.map(([k,v]) => `<div class="k">${esc(k)}</div><div class="v">${esc(v)}</div>`).join('')}
+  ${ph ? ['before','after'].filter(k => ph[k].length).map(k => `<div class="k">${k==='before'?'Fotos de antes':'Fotos de después'}</div><div class="pg">${ph[k].map(u => `<img src="${u}">`).join('')}</div>`).join('') : ''}
   <div class="k">Conforme del cliente</div>${d.sig ? `<img class="sig" src="${d.sig}">` : '<div class="sig"></div>'}<div class="v">${esc(d.signer||'')} · ${esc(d.date)}</div><div class="f">Generado con Rita</div></body></html>`;
 }
-function partePrint(){
-  const r = parteSave(true); if(!r) return;
+async function partePrint(){
+  const r = parteSave(true); if(!r) return; const ph = await ptDataUrls(r.d);
   const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'; document.body.appendChild(f);
-  const dd = f.contentDocument; dd.open(); dd.write(parteHtml(r.d, r.j)); dd.close();
+  const dd = f.contentDocument; dd.open(); dd.write(parteHtml(r.d, r.j, ph)); dd.close();
   setTimeout(() => { try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(_){ toast('No he podido abrir la impresión: usa Compartir'); } setTimeout(() => f.remove(), 60000); }, 500);
 }
 const RE_PARTE = /\b(?:haz|hazme|crea|prepara|abre|saca|genera)\b.*\b(?:parte|albaran)\b/;
@@ -3140,8 +3160,758 @@ function parteVoice(c){
   reply('Te abro el parte de «'+j.title+'» para que lo firme el cliente.'); setTimeout(() => parteForm(j.id), 900);
 }
 
+/* ======== PRESUPUESTOS Y CATÁLOGO (portado de «Presupuesto rápido») ======== */
+const QSTAT = ['Pendiente','Aceptado','En obra','Terminado','Rechazado'];
+const QCOL = {'Pendiente':'#b7791f','Aceptado':'#2f855a','En obra':'#2b6cb0','Terminado':'#718096','Rechazado':'#c53030'};
+const QJOB = {'Pendiente':'presupuestado','Aceptado':'aceptado','En obra':'encurso','Terminado':'terminado','Rechazado':'perdido'};
+const JQ = {presupuestado:'Pendiente', aceptado:'Aceptado', encurso:'En obra', terminado:'Terminado', cobrado:'Terminado', perdido:'Rechazado'};
+const JTYPES = ['Cancela','Puerta','Barandilla','Reja / ventana','Estructura','Reparación','Instalación','Otros'];
+const qn = v => { const x = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isFinite(x) ? x : 0; };
+const r2 = x => Math.round(x * 100) / 100;
+const nf2 = n => new Intl.NumberFormat('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2}).format(Number(n) || 0);
+const qNorm = s => fold(String(s || '')).replace(/\s+/g, ' ').trim();
+let Q = null, qLastId = '', qFilter = 'todos';
+
+function guessType(t){
+  const f = fold(t || '');
+  if(/cancela|porton|corredera|abatible/.test(f)) return 'Cancela';
+  if(/puerta|blindada|cerradura|bombin/.test(f)) return 'Puerta';
+  if(/barandilla|pasamanos|escalera/.test(f)) return 'Barandilla';
+  if(/reja|ventana|cerramiento/.test(f)) return 'Reja / ventana';
+  if(/estructura|nave|soporte|viga|pergola/.test(f)) return 'Estructura';
+  if(/repar|arreglo|soldar|cambio/.test(f)) return 'Reparación';
+  if(/instal|monta/.test(f)) return 'Instalación';
+  return 'Otros';
+}
+const defMargin = () => { const m = S.settings.qMargin; return m === '' || m == null ? 30 : qn(m); };
+function catPvp(c){ if(qn(c.coste) > 0) return r2(qn(c.coste) * (1 + (c.margen === '' || c.margen == null ? defMargin() : qn(c.margen)) / 100)); return qn(c.pvp); }
+const lineTot = l => qn(l.qty) * qn(l.price) * (1 - qn(l.dto) / 100);
+function qCalc(q){
+  let sub = 0, cost = 0, miss = 0;
+  for(const l of q.lines || []){ if(l.type === 'title') continue; sub += lineTot(l); cost += qn(l.cost) * qn(l.qty); if(!(qn(l.cost) > 0)) miss++; }
+  const dto = sub * qn(q.dto) / 100, base = sub - dto, iva = base * qn(q.iva) / 100;
+  return {sub, dto, base, iva, tot:base + iva, cost, miss, ben:base - cost, mar:base > 0 ? (base - cost) / base * 100 : 0};
+}
+function qSections(q){
+  const out = []; let cur = {title:null, nota:'', lines:[], sub:0, cost:0, miss:0};
+  const push = () => { if(cur.title !== null || cur.lines.length) out.push(cur); };
+  for(const l of q.lines || []){
+    if(l.type === 'title'){ push(); cur = {title:l.desc || 'Trabajo', nota:l.nota || '', lines:[], sub:0, cost:0, miss:0}; continue; }
+    cur.lines.push(l); cur.sub += lineTot(l); cur.cost += qn(l.cost) * qn(l.qty); if(!(qn(l.cost) > 0)) cur.miss++;
+  }
+  push(); return out;
+}
+function qNext(){
+  const y = String(new Date().getFullYear()); let n = 0;
+  for(const q of S.quotes){ const m = new RegExp('^' + y + '-(\\d+)$').exec(q.num || ''); if(m) n = Math.max(n, +m[1]); }
+  return y + '-' + String(n + 1).padStart(3, '0');
+}
+const quoteOf = id => S.quotes.find(x => x.id === id);
+const qTot = q => qCalc(q).tot;
+function qNew(pre){
+  return Object.assign({id:uid(), num:qNext(), date:today(), clientId:'', obra:'', type:'', notes:S.settings.qNotes == null ? 'Presupuesto válido 30 días.' : S.settings.qNotes, iva:S.settings.ivaPct == null ? 21 : S.settings.ivaPct, dto:0, mode:'detalle', status:'Pendiente', jobId:'', lines:[], sig:'', signer:'', accDate:''}, pre || {});
+}
+
+/* --- vincular con trabajos --- */
+function qSyncJob(q){
+  const c = qCalc(q), st = QJOB[q.status] || 'presupuestado', title = q.obra || ('Presupuesto ' + q.num);
+  let j = q.jobId && S.jobs.find(x => x.id === q.jobId);
+  if(!j){
+    j = {id:uid(), title, clientId:q.clientId, amount:0, status:st, sentDate:q.date, followDays:7, dueDate:'', paid:0, notes:'', photos:[], payments:[], doneDate:'', revMonths:0, warrantyMonths:0, work:[], partes:[]};
+    S.jobs.push(j); q.jobId = j.id;
+  }
+  const prev = j.status;
+  Object.assign(j, {title, clientId:q.clientId, amount:r2(c.tot), base:r2(c.base), quoteId:q.id});
+  j.type = q.type || ((!j.type || j.type === 'Otros') ? guessType(title) : j.type);
+  if(prev !== st && !(prev === 'cobrado' && st === 'terminado')){ j.status = st; if(st === 'terminado' && !j.doneDate) j.doneDate = today(); }
+  if(st === 'presupuestado' && !j.sentDate) j.sentDate = q.date;
+  upsertJobTasks(j);
+  return j;
+}
+const _uJT = upsertJobTasks;
+upsertJobTasks = function(j){ _uJT(j); try{ qFromJob(j); }catch(_){} };
+function qFromJob(j){
+  const q = S.quotes.find(x => x.jobId === j.id || x.id === j.quoteId); if(!q) return;
+  const st = JQ[j.status]; if(st && st !== q.status) q.status = st;
+}
+
+/* --- pantalla Presupuestos --- */
+function quoteRow(q){
+  const cl = client(q.clientId), c = qCalc(q), j = q.jobId && S.jobs.find(x => x.id === q.jobId);
+  const sub = [cl && cl.name, q.date ? shortDate(q.date) : '', c.cost > 0 ? 'margen ' + Math.round(c.mar) + '%' : ''].filter(Boolean).join(' · ');
+  return `<div class="row" onclick="quoteForm('${q.id}')"><span class="ic">🧮</span><div class="mid"><div class="t">${esc(q.num)} · ${esc(q.obra || 'Sin título')}</div><div class="s">${esc(sub) || '&nbsp;'}</div></div>
+   <div style="text-align:right;flex:none"><div style="font-weight:700">${eur(c.tot)}</div><div style="font-size:12px;font-weight:700;color:${QCOL[q.status]}">${q.status}${q.sig ? ' ✍' : ''}</div></div></div>`;
+}
+function viewQuotes(){
+  const all = S.quotes.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.num.localeCompare(a.num));
+  const vis = all.filter(q => qFilter === 'todos' || q.status === qFilter);
+  const sum = st => all.filter(q => q.status === st).reduce((s, q) => s + qTot(q), 0);
+  const chips = ['todos'].concat(QSTAT).map(s => `<button class="${qFilter === s ? 'on' : ''}" onclick="qFilter='${s}';render()">${s === 'todos' ? 'Todos' : s}</button>`).join('');
+  return `<div class="stats" style="margin-top:12px"><div class="stat"><b style="font-size:18px;color:${QCOL.Pendiente}">${eur(sum('Pendiente'))}</b><span>pendientes</span></div>
+   <div class="stat"><b style="font-size:18px;color:${QCOL.Aceptado}">${eur(sum('Aceptado') + sum('En obra'))}</b><span>aceptados / en obra</span></div>
+   <div class="stat"><b style="font-size:18px">${all.length}</b><span>presupuestos</span></div></div>
+   <div class="seg" style="margin-top:10px">${chips}</div><div style="height:8px"></div>` +
+   list(vis.map(quoteRow).join(''), 'Sin presupuestos todavía. Pulsa «+ Presupuesto» o dile a Rita: «haz un presupuesto para Marta».') +
+   `<div class="acts"><button class="btn" onclick="quoteForm()">+ Presupuesto</button><button class="btn sec" onclick="qOldImportSheet()">📥 Traer de Presupuesto rápido</button></div>`;
+}
+
+/* --- editor --- */
+function quoteForm(id, pre){
+  const q = id ? quoteOf(id) : null;
+  Q = q ? JSON.parse(JSON.stringify(q)) : qNew(pre);
+  Q._new = !q; renderQ();
+}
+function qSync(){
+  if(!Q || !$('#q_obra')) return;
+  Q.obra = val('q_obra').trim(); Q.date = val('q_date') || Q.date; Q.clientId = val('q_client'); Q.type = val('q_type');
+  Q.iva = qn(val('q_iva')); Q.dto = qn(val('q_dto')); Q.mode = val('q_mode'); Q.notes = val('q_notes'); Q.status = val('q_status');
+  Q._newCl = val('q_newcl').trim(); Q._newTel = val('q_newtel').trim();
+}
+function qLineRow(l, i){
+  if(l.type === 'title') return `<div class="row" style="background:var(--pri2)" onclick="qLineForm(${i})"><span class="ic">📌</span><div class="mid"><div class="t">${esc(l.desc || 'Trabajo')}</div>${l.nota ? `<div class="s">${esc(l.nota)}</div>` : ''}</div></div>`;
+  const t = lineTot(l), noCost = !(qn(l.cost) > 0);
+  return `<div class="row" onclick="qLineForm(${i})"><div class="mid"><div class="t">${esc(l.desc || 'Sin descripción')}</div><div class="s">${nf2(l.qty)} ${esc(l.ud || 'ud')} × ${nf2(l.price)} €${qn(l.dto) ? ' −' + qn(l.dto) + '%' : ''}${noCost ? ' · ⚠ sin coste' : ''}</div></div><div style="font-weight:700;flex:none">${eur(t)}</div></div>`;
+}
+function renderQ(){
+  const q = Q, c = qCalc(q), cl = client(q.clientId);
+  const priv = c.cost > 0 || q.lines.some(l => l.type !== 'title') ? `<div class="card" style="padding:10px 12px;font-size:14px;margin-top:8px"><b>🔒 Solo para ti (no se imprime)</b>
+    <div style="display:flex;justify-content:space-between"><span>Coste</span><b>${eur(c.cost)}</b></div>
+    <div style="display:flex;justify-content:space-between"><span>Beneficio</span><b style="color:${c.ben < 0 ? 'var(--bad)' : 'var(--ok)'}">${eur(c.ben)} (${Math.round(c.mar)}%)</b></div>
+    ${c.miss ? `<div class="s" style="color:var(--bad);font-size:12px">⚠ ${c.miss} línea(s) sin coste: el beneficio está inflado.</div>` : ''}
+    ${qSections(q).filter(s => s.title !== null).map(s => `<div class="s" style="font-size:12px;color:var(--mut)">${esc(s.title)}: ${eur(s.sub)} · coste ${eur(s.cost)} · margen ${s.sub > 0 ? Math.round((s.sub - s.cost) / s.sub * 100) : 0}%</div>`).join('')}
+    <div class="acts" style="margin-top:6px"><button class="btn sec sm" onclick="qRefreshCosts()">↻ Costes de hoy (catálogo)</button></div></div>` : '';
+  const chip = (txt, t) => `<button class="btn sec sm" onclick="qCond('${t}')">${txt}</button>`;
+  sheet(`<h3>🧮 Presupuesto ${esc(q.num)}</h3>
+  <label>Cliente</label><select id="q_client">${clientOpts(q.clientId)}</select>
+  <div class="two"><input id="q_newcl" placeholder="…o cliente nuevo" value="${esc(q._newCl || '')}"><input id="q_newtel" type="tel" placeholder="Teléfono" value="${esc(q._newTel || '')}"></div>
+  <label>Obra / descripción</label><input id="q_obra" value="${esc(q.obra)}" placeholder="Ej: Cancela corredera chalet">
+  <div class="two"><div><label>Fecha</label><input id="q_date" type="date" value="${q.date}"></div><div><label>Tipo de trabajo</label><select id="q_type"><option value="">Automático</option>${JTYPES.map(t => `<option ${q.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
+  <label>Líneas</label><div class="card">${q.lines.length ? q.lines.map(qLineRow).join('') : '<div class="empty">Añade materiales del catálogo, mano de obra o líneas libres.</div>'}</div>
+  <div class="acts" style="margin-top:8px"><button class="btn sm" onclick="qPick()">📚 Del catálogo</button><button class="btn sec sm" onclick="qAddLine()">+ Línea</button><button class="btn sec sm" onclick="qAddTitle()">📌 Título</button></div>
+  <div class="acts"><button class="btn sec sm" onclick="qQuick('labor')">👷 Mano de obra</button><button class="btn sec sm" onclick="qQuick('travel')">🚐 Desplazamiento</button></div>
+  <div class="two"><div><label>Descuento (%)</label><input id="q_dto" type="number" inputmode="decimal" step="0.5" value="${q.dto || ''}" onchange="qSync();renderQ()"></div><div><label>IVA (%)</label><input id="q_iva" type="number" inputmode="decimal" step="1" value="${q.iva}" onchange="qSync();renderQ()"></div></div>
+  <div class="card" style="padding:10px 12px;font-size:15px;margin-top:8px">
+   <div style="display:flex;justify-content:space-between"><span>Subtotal</span><b>${eur(c.sub)}</b></div>
+   ${c.dto ? `<div style="display:flex;justify-content:space-between"><span>Descuento</span><b>−${eur(c.dto)}</b></div>` : ''}
+   <div style="display:flex;justify-content:space-between"><span>IVA ${q.iva}%</span><b>${eur(c.iva)}</b></div>
+   <div style="display:flex;justify-content:space-between;font-size:20px;margin-top:4px"><b>TOTAL</b><b>${eur(c.tot)}</b></div></div>
+  ${priv}
+  <div class="two"><div><label>Al imprimir</label><select id="q_mode"><option value="detalle" ${q.mode === 'detalle' ? 'selected' : ''}>Detallado</option><option value="resumen" ${q.mode === 'resumen' ? 'selected' : ''}>Resumen (sin precios por línea)</option></select></div>
+  <div><label>Estado</label><select id="q_status">${QSTAT.map(s => `<option ${q.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div></div>
+  <label>Condiciones</label><textarea id="q_notes" style="min-height:70px">${esc(q.notes)}</textarea>
+  <div class="acts">${chip('Validez 30 días', 'val')}${chip('Pago 50/50', 'pago')}${chip('Plazo', 'plazo')}${chip('Solo lo descrito', 'solo')}</div>
+  <div class="acts"><button class="btn" onclick="qSave()">Guardar</button><button class="btn sec" onclick="closeSheet()">Cerrar</button></div>
+  <div class="acts"><button class="btn sec" onclick="qPrint()">🖨 Imprimir / PDF</button>${cl && cl.phone ? `<button class="btn ok" onclick="qWa()">💬 WhatsApp</button>` : ''}<button class="btn ok" onclick="qAccept()">✍ Firma y aceptar</button></div>
+  <div class="acts">${q.jobId ? `<button class="btn sec" onclick="qSave(true);jobForm('${q.jobId}')">🔧 Ver trabajo</button>` : ''}${!Q._new ? `<button class="btn bad" onclick="qDel('${q.id}')">Borrar</button>` : ''}</div>
+  ${q.sig ? `<p class="note">Aceptado con firma de ${esc(q.signer || 'el cliente')} el ${esc(q.accDate)}.</p>` : ''}`);
+}
+const COND = {val:'Presupuesto válido 30 días.', pago:'Forma de pago: 50 % al aceptar el presupuesto y 50 % al finalizar el trabajo.', plazo:'Plazo de ejecución: a convenir tras la aceptación.', solo:'El presupuesto incluye únicamente lo descrito; cualquier trabajo adicional se presupuestará aparte.'};
+function qCond(k){ qSync(); const t = COND[k]; if(!Q.notes.includes(t)) Q.notes = (Q.notes ? Q.notes.trim() + '\n' : '') + t; renderQ(); }
+function qAddTitle(){ qSync(); Q.lines.push({type:'title', desc:'', nota:''}); qLineForm(Q.lines.length - 1, true); }
+function qAddLine(l){ qSync(); Q.lines.push(l || {desc:'', ud:'ud', qty:1, price:'', dto:0, cost:''}); qLineForm(Q.lines.length - 1, true); }
+function qQuick(k){
+  qSync();
+  const it = S.catalog.find(c => qNorm(c.desc) === (k === 'labor' ? 'mano de obra' : 'desplazamiento'));
+  const price = it ? catPvp(it) : qn(k === 'labor' ? S.settings.qLabor : S.settings.qTravel);
+  const cost = it ? qn(it.coste) : (k === 'labor' ? hourRate() : 0);
+  qAddLine(k === 'labor' ? {desc:'Mano de obra', ud:'h', qty:1, price, dto:0, cost} : {desc:'Desplazamiento', ud:'ud', qty:1, price, dto:0, cost});
+}
+function qLineForm(i, isNew){
+  qSync(); const l = Q.lines[i]; if(!l) return renderQ();
+  const mv = `<div class="acts"><button class="btn sec sm" onclick="qLineMove(${i},-1)">↑ Subir</button><button class="btn sec sm" onclick="qLineMove(${i},1)">↓ Bajar</button><button class="btn sec sm" onclick="qLineDup(${i})">⧉ Duplicar</button></div>`;
+  if(l.type === 'title'){
+    sheet(`<h3>📌 Título de trabajo</h3><label>Título</label><input id="l_desc" value="${esc(l.desc)}" placeholder="Ej: Cancela corredera"><label>Nota (opcional)</label><input id="l_nota" value="${esc(l.nota || '')}">
+    ${mv}<div class="acts"><button class="btn" onclick="qLineSave(${i})">Listo</button><button class="btn bad" onclick="qLineDel(${i})">Quitar</button></div>`);
+    return;
+  }
+  sheet(`<h3>Línea del presupuesto</h3>
+  <label>Descripción</label><input id="l_desc" value="${esc(l.desc)}" placeholder="Ej: Perfil 40x40">
+  <div class="two"><div><label>Cantidad</label><input id="l_qty" type="number" inputmode="decimal" step="any" value="${l.qty}"></div><div><label>Unidad</label><input id="l_ud" value="${esc(l.ud || 'ud')}"></div></div>
+  <div class="two"><div><label>Precio venta (€/ud)</label><input id="l_price" type="number" inputmode="decimal" step="any" value="${l.price}"></div><div><label>Dto. línea (%)</label><input id="l_dto" type="number" inputmode="decimal" step="any" value="${l.dto || ''}"></div></div>
+  <label>🔒 Coste (€/ud, privado)</label><input id="l_cost" type="number" inputmode="decimal" step="any" value="${l.cost}" placeholder="Lo que te cuesta a ti">
+  ${mv}<div class="acts"><button class="btn" onclick="qLineSave(${i})">Listo</button><button class="btn bad" onclick="qLineDel(${i})">Quitar</button></div>`);
+  setTimeout(() => { const e = $(isNew && !l.desc ? '#l_desc' : '#l_qty'); if(e) e.focus(); }, 80);
+}
+function qLineRead(i){
+  const l = Q.lines[i]; if(!l || !$('#l_desc')) return;
+  l.desc = val('l_desc').trim();
+  if(l.type === 'title'){ l.nota = val('l_nota').trim(); return; }
+  l.qty = qn(val('l_qty')); l.ud = val('l_ud').trim() || 'ud'; l.price = qn(val('l_price')); l.dto = qn(val('l_dto')); l.cost = val('l_cost') === '' ? '' : qn(val('l_cost'));
+}
+function qLineSave(i){ qLineRead(i); renderQ(); }
+function qLineDel(i){ Q.lines.splice(i, 1); renderQ(); }
+function qLineMove(i, d){ qLineRead(i); const j = i + d; if(j < 0 || j >= Q.lines.length) return qLineForm(i); const t = Q.lines[i]; Q.lines[i] = Q.lines[j]; Q.lines[j] = t; qLineForm(j); }
+function qLineDup(i){ qLineRead(i); Q.lines.splice(i + 1, 0, JSON.parse(JSON.stringify(Q.lines[i]))); qLineForm(i + 1); }
+function qRefreshCosts(){
+  qSync(); let n = 0;
+  for(const l of Q.lines){ if(l.type === 'title') continue; const it = S.catalog.find(c => qNorm(c.desc) === qNorm(l.desc)); if(it && qn(it.coste) > 0 && qn(it.coste) !== qn(l.cost)){ l.cost = qn(it.coste); n++; } }
+  renderQ(); toast(n ? n + ' coste(s) actualizado(s)' : 'Los costes ya están al día');
+}
+
+/* --- selector de catálogo --- */
+function qPick(){
+  qSync();
+  sheet(`<h3>📚 Del catálogo</h3><input id="qp_s" placeholder="Buscar material…" oninput="qPickList()" autocomplete="off"><div id="qp_res"></div>
+  <div class="acts"><button class="btn sec" onclick="renderQ()">‹ Volver</button></div>`);
+  qPickList();
+}
+function qPickList(){
+  const w = qNorm(val('qp_s')).split(' ').filter(Boolean), res = $('#qp_res'); if(!res) return;
+  const items = S.catalog.filter(c => { const d = qNorm(c.desc); return w.every(x => d.includes(x)); }).sort((a, b) => a.desc.localeCompare(b.desc, 'es')).slice(0, 40);
+  res.innerHTML = list(items.map(c => `<div class="row" onclick="qPickAdd('${c.id}')"><div class="mid"><div class="t">${esc(c.desc)}</div><div class="s">${esc(c.ud || 'ud')}${qn(c.coste) > 0 ? ' · coste ' + nf2(c.coste) + ' €' : ''}</div></div><div style="font-weight:700;flex:none">${nf2(catPvp(c))} €</div></div>`).join(''), S.catalog.length ? 'No hay nada con ese nombre.' : 'El catálogo está vacío. Añade materiales en Negocio › Catálogo.');
+}
+function qPickAdd(id){
+  const c = S.catalog.find(x => x.id === id); if(!c) return;
+  Q.lines.push({desc:c.desc, ud:c.ud || 'ud', qty:1, price:catPvp(c), dto:0, cost:qn(c.coste) || '', fromCat:1});
+  qLineForm(Q.lines.length - 1);
+}
+
+/* --- guardar / borrar --- */
+function qSave(quiet){
+  qSync();
+  if(!Q.lines.some(l => l.type !== 'title') && !Q.obra && !Q.clientId && !Q._newCl){ if(quiet) return false; return toast('Pon al menos la obra o una línea'); }
+  if(!Q.clientId && Q._newCl){
+    const dup = S.clients.find(x => fold(x.name) === fold(Q._newCl));
+    if(dup) Q.clientId = dup.id; else { const cl = {id:uid(), name:Q._newCl, phone:Q._newTel || '', address:'', notes:''}; S.clients.push(cl); Q.clientId = cl.id; }
+  }
+  const o = JSON.parse(JSON.stringify(Q)); delete o._new; delete o._newCl; delete o._newTel;
+  const i = S.quotes.findIndex(x => x.id === o.id); if(i >= 0) S.quotes[i] = o; else S.quotes.push(o);
+  const q = quoteOf(o.id); qSyncJob(q); qLastId = q.id; save();
+  Q._new = false; Q.jobId = q.jobId; Q.clientId = q.clientId; Q._newCl = ''; Q._newTel = '';
+  if(!quiet){ closeSheet(); bizTab = 'quo'; render(); toast('Presupuesto guardado'); }
+  return true;
+}
+function qDel(id){
+  if(!confirm('¿Borrar este presupuesto? El trabajo asociado se queda.')) return;
+  S.quotes = S.quotes.filter(x => x.id !== id); closeSheet(); render();
+  const j = S.jobs.find(x => x.quoteId === id); if(j){ j.quoteId = ''; } save(); render();
+}
+
+/* --- firma y aceptación --- */
+function qAccept(){
+  if(!qSave(true)) return; const q = quoteOf(Q.id), cl = client(q.clientId);
+  sheet(`<h3>✍ Aceptación del presupuesto</h3><p class="note" style="margin:0">${esc(q.num)} · ${esc(q.obra)} · <b>${eur(qTot(q))}</b> IVA incluido</p>
+  <label>Nombre de quien acepta</label><input id="qs_name" value="${esc(q.signer || (cl ? waName(cl) : ''))}">
+  <label>Firma del cliente (con el dedo)</label><canvas id="qs_sig" class="sigpad" width="600" height="220"></canvas>
+  <div class="acts" style="margin-top:6px"><button class="btn sec sm" onclick="sigInit('','qs_sig')">Borrar firma</button></div>
+  <div class="acts"><button class="btn ok" onclick="qAcceptSave('${q.id}')">✔ Aceptar presupuesto</button><button class="btn sec" onclick="quoteForm('${q.id}')">‹ Volver</button></div>
+  <p class="note">Al aceptar pasa a «Aceptado», se crea/actualiza el trabajo y puedes pasar los materiales a la lista de la compra.</p>`);
+  sigInit(q.sig || '', 'qs_sig');
+}
+function qAcceptSave(id){
+  const q = quoteOf(id); if(!q) return;
+  if(!sigHas) return toast('El cliente tiene que firmar');
+  const src = $('#qs_sig'), t = document.createElement('canvas'); t.width = 360; t.height = 132; const g = t.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 360, 132); g.drawImage(src, 0, 0, 360, 132);
+  q.sig = t.toDataURL('image/png'); q.signer = val('qs_name').trim(); q.accDate = today();
+  if(q.status === 'Pendiente') q.status = 'Aceptado';
+  qSyncJob(q); save(); closeSheet(); bizTab = 'quo'; render(); toast('Presupuesto aceptado ✔');
+  if(qMaterialLines(q).length && confirm('¿Añado los materiales de este presupuesto a tu lista de la compra?')) qToShop(q.id);
+}
+const qIsMaterial = l => l.type !== 'title' && !/^(h|hora|horas)$/i.test(l.ud || '') && !/mano de obra|desplazamiento/i.test(l.desc || '');
+const qMaterialLines = q => (q.lines || []).filter(qIsMaterial);
+function qToShop(id){
+  const q = quoteOf(id); if(!q) return 0; let n = 0;
+  for(const l of qMaterialLines(q)){
+    const text = (qn(l.qty) ? nf2(l.qty).replace(',00', '') + ' ' + (l.ud && l.ud !== 'ud' ? l.ud + ' de ' : '') : '') + l.desc;
+    if(S.shop.some(x => !x.done && x.jobId === q.jobId && x.text === text)) continue;
+    S.shop.push({id:uid(), text, done:false, jobId:q.jobId || '', ts:Date.now()}); n++;
+  }
+  save(); render(); toast(n + ' material(es) en la lista de la compra'); return n;
+}
+
+/* --- impresión A4 (sin nombre del emisor ni costes) --- */
+function qPrintHtml(q){
+  const c = qCalc(q), cl = client(q.clientId), fd = d => d ? d.split('-').reverse().join('/') : '';
+  const money = n => nf2(n) + ' €';
+  let rows = '';
+  const secs = qSections(q);
+  if(q.mode === 'resumen'){
+    rows = secs.map(s => `<tr><td><b>${esc(s.title || 'Resto de trabajos')}</b>${s.nota ? `<div class="n">${esc(s.nota)}</div>` : ''}${s.lines.map(l => `<div class="n">· ${esc(l.desc)}</div>`).join('')}</td><td class="r">${money(s.sub)}</td></tr>`).join('');
+    rows = `<table><tr><th>Descripción</th><th class="r">Importe</th></tr>${rows}</table>`;
+  }else{
+    rows = `<table><tr><th>Descripción</th><th>Ud</th><th class="r">Cant.</th><th class="r">Precio</th><th class="r">Importe</th></tr>` + secs.map(s => {
+      const head = s.title !== null ? `<tr class="t"><td colspan="5">${esc(s.title)}${s.nota ? `<div class="n">${esc(s.nota)}</div>` : ''}</td></tr>` : '';
+      const ls = s.lines.map(l => `<tr><td>${esc(l.desc)}${qn(l.dto) ? `<div class="n">Dto. ${qn(l.dto)}%</div>` : ''}</td><td>${esc(l.ud || '')}</td><td class="r">${nf2(l.qty).replace(',00', '')}</td><td class="r">${nf2(l.price)}</td><td class="r">${money(lineTot(l))}</td></tr>`).join('');
+      const tot = s.title !== null ? `<tr class="s"><td colspan="4" class="r">Total ${esc(s.title)}</td><td class="r">${money(s.sub)}</td></tr>` : '';
+      return head + ls + tot;
+    }).join('') + '</table>';
+  }
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Presupuesto ${esc(q.num)}</title><style>
+  @page{size:A4;margin:12mm}body{font:13px system-ui,Arial,sans-serif;color:#111;margin:0}h1{font-size:26px;margin:0}.top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1d4e89;padding-bottom:8px}
+  .box{border:1px solid #c8d0db;border-radius:6px;padding:8px 10px;margin:12px 0}.k{font-size:10px;color:#667385;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;margin-top:6px}
+  th{background:#1d4e89;color:#fff;text-align:left;padding:5px 6px;font-size:11px}td{padding:5px 6px;border-bottom:1px solid #e3e8ef;vertical-align:top}.r{text-align:right;white-space:nowrap}.n{font-size:11px;color:#667385}
+  tr.t td{background:#eef3f9;font-weight:700}tr.s td{font-weight:700;border-bottom:2px solid #c8d0db}.tot{margin:12px 0 0 auto;width:260px}.tot div{display:flex;justify-content:space-between;padding:3px 0}.tot .g{font-size:17px;font-weight:800;border-top:2px solid #1d4e89;margin-top:4px;padding-top:6px}
+  .cond{white-space:pre-wrap;margin-top:12px;font-size:12px}.sig{display:flex;gap:24px;margin-top:26px}.sig div{flex:1;border:1px solid #c8d0db;border-radius:6px;height:90px;padding:6px;font-size:10px;color:#667385;position:relative}.sig img{position:absolute;left:8px;top:30px;height:50px}
+  </style></head><body><div class="top"><h1>PRESUPUESTO</h1><div style="text-align:right"><b>Nº ${esc(q.num)}</b><br>${fd(q.date)}</div></div>
+  <div class="box"><div class="k">Cliente</div><b>${esc(cl ? cl.name : (q.obra ? '' : '—'))}</b>${cl && cl.phone ? ' · ' + esc(cl.phone) : ''}${q.obra ? `<div class="k" style="margin-top:6px">Obra / descripción</div>${esc(q.obra)}` : ''}</div>
+  ${rows}
+  <div class="tot"><div><span>Subtotal</span><span>${money(c.sub)}</span></div>${c.dto ? `<div><span>Descuento ${qn(q.dto)}%</span><span>−${money(c.dto)}</span></div><div><span>Base imponible</span><span>${money(c.base)}</span></div>` : ''}<div><span>IVA ${qn(q.iva)}%</span><span>${money(c.iva)}</span></div><div class="g"><span>TOTAL</span><span>${money(c.tot)}</span></div></div>
+  ${q.notes ? `<div class="k" style="margin-top:14px">Condiciones</div><div class="cond">${esc(q.notes)}</div>` : ''}
+  <div class="sig"><div>Conforme del cliente (nombre y firma)${q.sig ? `<img src="${q.sig}">` : ''}${q.signer ? `<span style="position:absolute;left:8px;bottom:4px;color:#111;font-size:11px">${esc(q.signer)}</span>` : ''}</div><div>Fecha de aceptación<br><b style="font-size:13px;color:#111">${q.accDate ? fd(q.accDate) : ''}</b></div></div></body></html>`;
+}
+function qPrint(){
+  if(!qSave(true)) return; const q = quoteOf(Q.id);
+  const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'; document.body.appendChild(f);
+  const dd = f.contentDocument; dd.open(); dd.write(qPrintHtml(q)); dd.close();
+  setTimeout(() => { try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(_){ toast('No he podido abrir la impresión'); } setTimeout(() => f.remove(), 60000); }, 500);
+}
+function qWaText(q){
+  const c = qCalc(q), cl = client(q.clientId);
+  return 'Hola' + (cl ? ' ' + waName(cl) : '') + ', te paso el presupuesto' + (q.obra ? ' de «' + q.obra + '»' : '') + ': ' + eur(c.base) + ' + IVA (' + eur(c.tot) + ' en total). ' + (q.notes ? q.notes.split('\n')[0] : '') + ' Cualquier duda me dices.';
+}
+function qWa(){ if(!qSave(true)) return; const q = quoteOf(Q.id), cl = client(q.clientId); if(!cl) return; window.open(waLink(cl, qWaText(q)), '_blank'); }
+
+/* ======== CATÁLOGO ======== */
+let catQ = '';
+function viewCatalog(){
+  const w = qNorm(catQ).split(' ').filter(Boolean);
+  const items = S.catalog.filter(c => { const d = qNorm(c.desc); return w.every(x => d.includes(x)); }).sort((a, b) => a.desc.localeCompare(b.desc, 'es'));
+  const rows = items.slice(0, 80).map(c => {
+    const lp = lastPrice(c.desc);
+    return `<div class="row" onclick="catForm('${c.id}')"><div class="mid"><div class="t">${esc(c.desc)}</div><div class="s">${esc(c.ud || 'ud')}${qn(c.coste) > 0 ? ' · coste ' + nf2(c.coste) + ' € · margen ' + (c.margen === '' || c.margen == null ? defMargin() : qn(c.margen)) + '%' : ''}${lp ? ' · pagado ' + nf2(lp.price) + ' € (' + esc(lp.sup) + ')' : ''}</div></div><div style="font-weight:700;flex:none">${nf2(catPvp(c))} €</div></div>`;
+  }).join('');
+  return `<div style="margin-top:12px"><input id="cat_q" placeholder="🔍 Buscar en el catálogo (${S.catalog.length})" value="${esc(catQ)}" oninput="catQ=this.value;catRefresh()"></div><div style="height:8px"></div><div id="cat_list">${list(rows, 'Catálogo vacío. Añade materiales o impórtalos de Excel.')}</div>` +
+   `<div class="acts"><button class="btn" onclick="catForm()">+ Material</button><button class="btn sec" onclick="catImportSheet()">📥 Importar</button></div>
+    <div class="acts"><button class="btn sec" onclick="catRaise()">% Subir tarifa</button><button class="btn sec" onclick="catCsv()">📊 Exportar</button></div>`;
+}
+function catRefresh(){ const el = $('#cat_list'); if(!el) return; const sc = document.activeElement && document.activeElement.id === 'cat_q'; const keep = catQ; render(); const n = $('#cat_q'); if(n && sc){ n.focus(); n.setSelectionRange(keep.length, keep.length); } }
+function catForm(id){
+  const c = id ? S.catalog.find(x => x.id === id) : {desc:'', ud:'ud', coste:'', margen:'', pvp:''};
+  sheet(`<h3>${id ? 'Editar material' : 'Nuevo material'}</h3>
+  <label>Descripción</label><input id="c_desc" value="${esc(c.desc)}" placeholder="Ej: Tubo cuadrado 40x40x2">
+  <div class="two"><div><label>Unidad</label><input id="c_ud" value="${esc(c.ud || 'ud')}" placeholder="ud, m, kg, h"></div><div><label>Coste (€)</label><input id="c_coste" type="number" inputmode="decimal" step="any" value="${c.coste}" oninput="catPrev()"></div></div>
+  <div class="two"><div><label>Margen (%)</label><input id="c_margen" type="number" inputmode="decimal" step="any" value="${c.margen}" placeholder="${defMargin()}" oninput="catPrev()"></div><div><label>PVP fijo (€)</label><input id="c_pvp" type="number" inputmode="decimal" step="any" value="${c.pvp}" oninput="catPrev()"></div></div>
+  <p class="note" id="c_prev"></p>
+  <div class="acts"><button class="btn" onclick="catSave(${id ? `'${id}'` : 'null'})">Guardar</button><button class="btn sec" onclick="closeSheet()">Cancelar</button></div>
+  ${id ? `<div class="acts"><button class="btn bad" onclick="catDel('${id}')">Borrar</button></div>` : ''}
+  <p class="note">Si pones coste, el precio de venta sale de coste + margen. Si no, se usa el PVP fijo.</p>`);
+  catPrev();
+}
+function catPrev(){ const e = $('#c_prev'); if(!e) return; const p = catPvp({coste:val('c_coste'), margen:val('c_margen'), pvp:val('c_pvp')}); e.textContent = 'Precio de venta: ' + nf2(p) + ' €'; }
+function catSave(id){
+  const desc = val('c_desc').trim(); if(!desc) return toast('Pon la descripción');
+  const o = {id:id || uid(), desc, ud:val('c_ud').trim() || 'ud', coste:val('c_coste') === '' ? '' : qn(val('c_coste')), margen:val('c_margen') === '' ? '' : qn(val('c_margen')), pvp:val('c_pvp') === '' ? '' : qn(val('c_pvp'))};
+  const old = id && S.catalog.find(x => x.id === id); if(old && old.supplierId) o.supplierId = old.supplierId;
+  if(id) S.catalog = S.catalog.map(x => x.id === id ? o : x); else S.catalog.push(o);
+  save(); closeSheet(); render(); toast('Guardado');
+}
+function catDel(id){ if(!confirm('¿Borrar este material del catálogo?')) return; S.catalog = S.catalog.filter(x => x.id !== id); save(); closeSheet(); render(); }
+function catRaise(){
+  const p = prompt('¿Cuánto sube la tarifa de tus proveedores? (%) Se aplica al coste de todo el catálogo. Usa negativo para bajar.', '3'); if(p === null) return;
+  const k = qn(p); if(!k) return;
+  if(!confirm('Subir un ' + k + '% el coste de ' + S.catalog.filter(c => qn(c.coste) > 0).length + ' materiales. ¿Seguro?')) return;
+  S.catalog.forEach(c => { if(qn(c.coste) > 0) c.coste = r2(qn(c.coste) * (1 + k / 100)); }); save(); render(); toast('Tarifa actualizada');
+}
+function catCsv(){
+  const rows = [['Descripción', 'Ud', 'Coste', 'Margen %', 'PVP']].concat(S.catalog.map(c => [c.desc, c.ud, String(c.coste).replace('.', ','), String(c.margen).replace('.', ','), String(catPvp(c)).replace('.', ',')]));
+  download('catalogo-' + today() + '.csv', '﻿' + csv(rows), 'text/csv;charset=utf-8');
+}
+function catImportSheet(){
+  sheet(`<h3>📥 Importar catálogo</h3>
+  <p class="note" style="margin:0">Pega las celdas copiadas de Excel (descripción, unidad, coste…) o carga un archivo .csv / .xlsx. También vale la copia .json de Presupuesto rápido.</p>
+  <textarea id="ci_txt" style="min-height:120px" placeholder="Pega aquí…"></textarea>
+  <div class="acts"><button class="btn" onclick="catImportGo(val('ci_txt'))">Importar lo pegado</button><button class="btn sec" onclick="$('#ci_file').click()">📂 Elegir archivo</button></div>
+  <input type="file" id="ci_file" accept=".xlsx,.xls,.csv,.txt,.json" style="display:none" onchange="catImportFile(this)">
+  <div class="acts"><button class="btn sec" onclick="closeSheet()">Cancelar</button></div>
+  <p class="note">Detecto las columnas por el encabezado (descripción, ud, coste, margen, pvp). Sin encabezado: 1ª descripción, 2ª unidad, 3ª coste. Los que ya existen se actualizan.</p>`);
+}
+function catImportFile(inp){
+  const f = inp.files[0]; inp.value = ''; if(!f) return;
+  if(/\.xlsx?$/i.test(f.name)){
+    const run = () => { const r = new FileReader(); r.onload = () => { try{ const wb = XLSX.read(r.result, {type:'array'}); const ws = wb.Sheets[wb.SheetNames[0]]; catImportGo(XLSX.utils.sheet_to_csv(ws, {FS:'\t'})); }catch(e){ toast('No he podido leer ese Excel'); } }; r.readAsArrayBuffer(f); };
+    if(window.XLSX) return run();
+    const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = run; s.onerror = () => toast('Para leer .xlsx hace falta internet una vez. Alternativa: Excel › Guardar como CSV, o copia las celdas y pégalas.'); document.head.appendChild(s); return;
+  }
+  const r = new FileReader(); r.onload = () => catImportGo(String(r.result)); r.readAsText(f);
+}
+function numEs(s){
+  s = String(s == null ? '' : s).replace(/[€\s]/g, ''); if(!s) return '';
+  if(s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.'); else if(s.includes(',')) s = s.replace(',', '.');
+  const x = parseFloat(s); return isFinite(x) ? x : '';
+}
+function catImportGo(text){
+  text = String(text || '').trim(); if(!text) return toast('No hay nada que importar');
+  if(text[0] === '{'){ try{ const d = JSON.parse(text); if(d && d.cat && d.saved) return oldImport(d); }catch(_){} }
+  const delim = text.includes('\t') ? '\t' : (text.includes(';') ? ';' : ',');
+  const rows = text.split(/\r?\n/).map(l => l.split(delim).map(x => x.trim().replace(/^"|"$/g, ''))).filter(r => r.some(Boolean));
+  if(!rows.length) return toast('No he encontrado filas');
+  let m = {d:0, u:1, c:2, g:-1, p:-1}, start = 0, hasMargin = false;
+  const h = rows[0].map(x => fold(x));
+  if(h.some(x => /descrip|material|nombre|articulo|producto|concepto|referencia|coste|costo|pvp|precio/.test(x)) && !h.every(x => /^[\d.,]*$/.test(x))){
+    start = 1; m = {d:-1, u:-1, c:-1, g:-1, p:-1};
+    h.forEach((x, i) => {
+      if(/coste|costo|compra|neto/.test(x)) m.c = i; else if(/margen/.test(x)) m.g = i; else if(/pvp|venta|precio|tarifa/.test(x)) m.p = i;
+      else if(/^(ud|und|unidad|unid|medida)/.test(x)) m.u = i; else if(m.d < 0 && /descrip|material|nombre|articulo|producto|concepto|referencia/.test(x)) m.d = i;
+    });
+    if(m.d < 0) m.d = 0;
+  }
+  let add = 0, upd = 0;
+  for(const r of rows.slice(start)){
+    const desc = (r[m.d] || '').trim(); if(!desc || /^ejemplo/i.test(desc)) continue;
+    let coste = m.c >= 0 ? numEs(r[m.c]) : '', margen = m.g >= 0 ? numEs(r[m.g]) : '', pvp = m.p >= 0 ? numEs(r[m.p]) : '';
+    if(margen !== '' && margen > 0 && margen < 1) margen = r2(margen * 100);
+    const ud = m.u >= 0 ? (r[m.u] || '').trim() : '';
+    const ex = S.catalog.find(c => qNorm(c.desc) === qNorm(desc));
+    if(ex){ if(ud) ex.ud = ud; if(coste !== '') ex.coste = coste; if(margen !== '') ex.margen = margen; if(pvp !== '') ex.pvp = pvp; upd++; }
+    else{ S.catalog.push({id:uid(), desc, ud:ud || 'ud', coste, margen, pvp}); add++; }
+  }
+  save(); closeSheet(); bizTab = 'cat'; render(); toast(add + ' nuevos, ' + upd + ' actualizados');
+}
+
+/* ======== TRAER LO DE «PRESUPUESTO RÁPIDO» ======== */
+function qOldImportSheet(){
+  sheet(`<h3>📥 Traer de Presupuesto rápido</h3>
+  <p class="note" style="margin:0">En la app antigua pulsa <b>Copia</b> (exportar) para bajar el archivo <b>presupuestos_copia_….json</b>. Cárgalo aquí y pasarán tu catálogo y tus presupuestos (con cobros y gastos) a Rita.</p>
+  <div class="acts"><button class="btn" onclick="$('#qo_file').click()">📂 Elegir archivo .json</button><button class="btn sec" onclick="closeSheet()">Cancelar</button></div>
+  <input type="file" id="qo_file" accept=".json,application/json" style="display:none" onchange="qOldFile(this)">`);
+}
+function qOldFile(inp){
+  const f = inp.files[0]; inp.value = ''; if(!f) return;
+  const r = new FileReader(); r.onload = () => { try{ const d = JSON.parse(String(r.result)); if(!(d && d.saved)) return toast('Ese archivo no parece una copia de Presupuesto rápido'); oldImport(d); }catch(e){ toast('No he podido leer el archivo'); } }; r.readAsText(f);
+}
+function oldImport(d){
+  let nc = 0, nq = 0;
+  for(const c of d.cat || []){
+    if(!c || !c.desc || S.catalog.some(x => qNorm(x.desc) === qNorm(c.desc))) continue;
+    S.catalog.push({id:uid(), desc:c.desc, ud:c.ud || 'ud', coste:c.coste === '' || c.coste == null ? '' : qn(c.coste), margen:c.margen === '' || c.margen == null ? '' : qn(c.margen), pvp:c.pvp === '' || c.pvp == null ? '' : qn(c.pvp)}); nc++;
+  }
+  for(const o of d.saved || []){
+    if(!o || !o.num || S.quotes.some(x => x.num === o.num)) continue;
+    let cl = o.cliente ? S.clients.find(x => fold(x.name) === fold(o.cliente)) : null;
+    if(!cl && o.cliente){ cl = {id:uid(), name:o.cliente, phone:o.tel || '', address:'', notes:''}; S.clients.push(cl); }
+    const q = qNew({num:o.num, date:o.fecha || today(), clientId:cl ? cl.id : '', obra:o.obra || '', notes:o.notas == null ? '' : o.notas, iva:o.iva == null ? 21 : o.iva, dto:o.dto || 0, mode:o.modo || 'detalle', status:QSTAT.includes(o.estado) ? o.estado : 'Pendiente',
+      lines:(o.lines || []).map(l => l.type === 'title' ? {type:'title', desc:l.desc || '', nota:l.nota || ''} : {desc:l.desc || '', ud:l.ud || 'ud', qty:qn(l.qty), price:qn(l.price), dto:qn(l.dto), cost:l.cost === '' || l.cost == null ? '' : qn(l.cost)})});
+    q.type = guessType(q.obra); S.quotes.push(q);
+    const j = qSyncJob(q);
+    j.payments = (o.pagos || []).map(p => ({date:p.fecha || today(), amount:qn(p.importe)})); j.paid = r2(j.payments.reduce((s, p) => s + p.amount, 0));
+    if(j.paid >= j.amount - 0.01 && j.amount > 0 && q.status === 'Terminado') j.status = 'cobrado';
+    for(const g of o.gastos || []) S.expenses.push({id:uid(), concept:g.concepto || 'Gasto', amount:qn(g.importe), date:g.fecha || today(), cat:'Material', clientId:q.clientId, jobId:j.id, photos:[]});
+    upsertJobTasks(j); nq++;
+  }
+  save(); closeSheet(); bizTab = 'quo'; render(); toast(nq + ' presupuestos y ' + nc + ' materiales traídos');
+}
+
+/* --- Ajustes --- */
+function qSetBlock(){
+  const st = S.settings;
+  return `<div class="set"><h4>🧮 Presupuestos</h4>
+   <label style="margin-top:0">Margen por defecto del catálogo (%)</label><input type="number" inputmode="decimal" value="${st.qMargin == null || st.qMargin === '' ? 30 : st.qMargin}" onchange="S.settings.qMargin=parseFloat(this.value)||0;persist();toast('Guardado')">
+   <label>Precio de venta de tu hora de trabajo (€/h)</label><input type="number" inputmode="decimal" value="${st.qLabor || ''}" placeholder="Ej: 40" onchange="S.settings.qLabor=parseFloat(this.value)||0;persist();toast('Guardado')">
+   <label>Precio del desplazamiento (€)</label><input type="number" inputmode="decimal" value="${st.qTravel || ''}" placeholder="Ej: 25" onchange="S.settings.qTravel=parseFloat(this.value)||0;persist();toast('Guardado')">
+   <label>Condiciones por defecto</label><textarea onchange="S.settings.qNotes=this.value;persist();toast('Guardado')">${esc(st.qNotes == null ? 'Presupuesto válido 30 días.' : st.qNotes)}</textarea>
+   <p class="note">La hoja que ve el cliente no lleva tu nombre ni tus costes.</p></div>`;
+}
+
+/* ======== PROVEEDORES, RENTABILIDAD, FOTOS DEL PARTE, VOZ DE PRESUPUESTOS ======== */
+const fmtD = d => d ? shortDate(d) : '';
+function lastPrice(name){
+  const n = qNorm(name); if(!n) return null; let best = null;
+  for(const e of S.expenses){
+    if(!e.mat || !(qn(e.uprice) > 0)) continue;
+    const m = qNorm(e.mat); if(!(m === n || m.includes(n) || n.includes(m))) continue;
+    if(!best || (e.date || '') >= (best.date || '')) best = e;
+  }
+  if(!best) return null;
+  const s = S.suppliers.find(x => x.id === best.supplierId);
+  return {price:qn(best.uprice), date:best.date, sup:s ? s.name : 'proveedor', e:best};
+}
+const supOf = id => S.suppliers.find(x => x.id === id);
+function supMats(id){
+  const map = {};
+  for(const e of S.expenses){ if(e.supplierId !== id || !e.mat) continue; const k = qNorm(e.mat); if(!map[k] || (e.date || '') >= map[k].date) map[k] = {mat:e.mat, price:qn(e.uprice), date:e.date || '', ud:e.ud || ''}; }
+  return Object.values(map).sort((a, b) => b.date.localeCompare(a.date));
+}
+function viewSuppliers(){
+  const rows = S.suppliers.slice().sort((a, b) => a.name.localeCompare(b.name, 'es')).map(s => {
+    const ms = supMats(s.id), tot = S.expenses.filter(e => e.supplierId === s.id).reduce((a, e) => a + (+e.amount || 0), 0);
+    return `<div class="row" onclick="supForm('${s.id}')"><span class="ic">🏭</span><div class="mid"><div class="t">${esc(s.name)}</div><div class="s">${esc([s.phone, ms.length ? ms.length + ' material(es)' : '', tot ? 'comprado ' + eur(tot) : ''].filter(Boolean).join(' · ')) || '&nbsp;'}</div></div></div>`;
+  }).join('');
+  return '<div style="height:12px"></div>' + list(rows, 'Sin proveedores. Añade tu ferretería o almacén de hierro y apunta lo que le compras.') + `<div class="acts"><button class="btn" onclick="supEdit()">+ Proveedor</button></div>`;
+}
+function supForm(id){
+  const s = supOf(id); if(!s) return;
+  const ms = supMats(id);
+  sheet(`<h3>🏭 ${esc(s.name)}</h3>
+  ${s.phone ? `<div class="acts"><a class="btn" style="text-decoration:none" href="tel:${esc(s.phone)}">📞 Llamar</a><a class="btn ok" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/${esc(telNum(s.phone))}">💬 WhatsApp</a></div>` : ''}
+  ${s.notes ? `<p class="note">${esc(s.notes)}</p>` : ''}
+  <label>Lo que le compras · último precio pagado</label>
+  ${list(ms.map(m => `<div class="row" onclick="buyForm('${id}','${esc(m.mat).replace(/'/g, '&#39;')}')"><div class="mid"><div class="t">${esc(m.mat)}</div><div class="s">${fmtD(m.date)}</div></div><div style="font-weight:700;flex:none">${nf2(m.price)} €</div></div>`).join(''), 'Aún no hay compras apuntadas.')}
+  <div class="acts"><button class="btn" onclick="buyForm('${id}')">+ Compra</button><button class="btn sec" onclick="supEdit('${id}')">✏ Editar</button></div>
+  <div class="acts"><button class="btn sec" onclick="closeSheet()">Cerrar</button></div>`);
+}
+function supEdit(id){
+  const s = id ? supOf(id) : {name:'', phone:'', notes:''};
+  sheet(`<h3>${id ? 'Editar proveedor' : 'Nuevo proveedor'}</h3><label>Nombre</label><input id="s_name" value="${esc(s.name)}" placeholder="Ej: Hierros Pepe">
+  <label>Teléfono</label><input id="s_tel" type="tel" value="${esc(s.phone)}"><label>Notas</label><textarea id="s_notes" placeholder="Horario, comercial, condiciones…">${esc(s.notes)}</textarea>
+  <div class="acts"><button class="btn" onclick="supSave(${id ? `'${id}'` : 'null'})">Guardar</button><button class="btn sec" onclick="${id ? `supForm('${id}')` : 'closeSheet()'}">Cancelar</button></div>
+  ${id ? `<div class="acts"><button class="btn bad" onclick="supDel('${id}')">Borrar</button></div>` : ''}`);
+}
+function supSave(id){
+  const name = val('s_name').trim(); if(!name) return toast('Pon el nombre');
+  const o = {id:id || uid(), name, phone:val('s_tel').trim(), notes:val('s_notes').trim()};
+  if(id) S.suppliers = S.suppliers.map(x => x.id === id ? o : x); else S.suppliers.push(o);
+  save(); bizTab = 'sup'; render(); supForm(o.id);
+}
+function supDel(id){ if(!confirm('¿Borrar este proveedor? Sus compras se quedan en los gastos.')) return; S.suppliers = S.suppliers.filter(x => x.id !== id); save(); closeSheet(); render(); }
+function buyForm(supId, mat){
+  const s = supOf(supId); if(!s) return;
+  const last = mat ? lastPrice(mat) : null, cat = S.catalog.find(c => qNorm(c.desc) === qNorm(mat || ''));
+  sheet(`<h3>🛒 Compra a ${esc(s.name)}</h3>
+  <label>Material</label><input id="b_mat" list="b_dl" value="${esc(mat || '')}" placeholder="Ej: Tubo cuadrado 40x40x2"><datalist id="b_dl">${S.catalog.slice(0, 300).map(c => `<option value="${esc(c.desc)}">`).join('')}</datalist>
+  <div class="two"><div><label>Cantidad</label><input id="b_qty" type="number" inputmode="decimal" step="any" value="1"></div><div><label>Unidad</label><input id="b_ud" value="${esc(cat ? cat.ud : 'ud')}"></div></div>
+  <div class="two"><div><label>Precio por unidad (€, sin IVA)</label><input id="b_price" type="number" inputmode="decimal" step="any" value="${last ? last.price : ''}"></div><div><label>Fecha</label><input id="b_date" type="date" value="${today()}"></div></div>
+  <label>Para el trabajo (opcional)</label><select id="b_job">${jobOpts('')}</select>
+  <label class="tg" style="text-transform:none;font-size:15px;color:var(--tx)"><input type="checkbox" id="b_cat" checked>Poner este precio como coste en el catálogo</label>
+  <div class="acts"><button class="btn" onclick="buySave('${supId}')">Guardar compra</button><button class="btn sec" onclick="supForm('${supId}')">Cancelar</button></div>
+  <p class="note">Se anota también como gasto de material.${last ? ' Último precio pagado: ' + nf2(last.price) + ' € (' + fmtD(last.date) + ').' : ''}</p>`);
+}
+function buySave(supId){
+  const mat = val('b_mat').trim(), qty = qn(val('b_qty')) || 1, price = qn(val('b_price'));
+  if(!mat) return toast('Pon el material'); if(!(price > 0)) return toast('Pon el precio por unidad');
+  buyRecord({supId, mat, qty, ud:val('b_ud').trim() || 'ud', price, date:val('b_date') || today(), jobId:val('b_job'), toCat:$('#b_cat').checked});
+  supForm(supId); toast('Compra apuntada');
+}
+function buyRecord(o){
+  const jb = S.jobs.find(j => j.id === o.jobId);
+  const e = {id:uid(), concept:nf2(o.qty).replace(',00', '') + ' ' + (o.ud !== 'ud' ? o.ud + ' de ' : '') + o.mat, amount:r2(o.qty * o.price), date:o.date, cat:'Material', clientId:jb ? jb.clientId || '' : '', jobId:o.jobId || '', photos:[], supplierId:o.supId, mat:o.mat, qty:o.qty, ud:o.ud, uprice:o.price};
+  S.expenses.push(e);
+  let msg = '';
+  if(o.toCat){
+    let c = S.catalog.find(x => qNorm(x.desc) === qNorm(o.mat));
+    if(c){ c.coste = o.price; if(!c.ud || c.ud === 'ud') c.ud = o.ud; } else { S.catalog.push({id:uid(), desc:o.mat, ud:o.ud, coste:o.price, margen:'', pvp:'', supplierId:o.supId}); }
+    msg = 'catalog';
+  }
+  save(); render(); return msg;
+}
+
+/* ======== RENTABILIDAD ======== */
+function rentRows(){
+  const iv = S.settings.ivaPct == null ? 21 : S.settings.ivaPct, incl = S.settings.ivaIncl !== false;
+  return S.jobs.filter(j => (j.status === 'terminado' || j.status === 'cobrado') && +j.amount > 0).map(j => {
+    const base = +j.base > 0 ? +j.base : (incl ? j.amount / (1 + iv / 100) : +j.amount), cost = jobSpent(j);
+    return {j, type:j.type || guessType(j.title), cid:j.clientId || '', base, cost, mar:base - cost, min:jobMin(j)};
+  });
+}
+function rentGroup(rows, keyFn){
+  const m = {};
+  for(const r of rows){ const k = keyFn(r); const g = m[k] || (m[k] = {k, n:0, base:0, cost:0, min:0}); g.n++; g.base += r.base; g.cost += r.cost; g.min += r.min; }
+  return Object.values(m).map(g => Object.assign(g, {mar:g.base - g.cost, pct:g.base > 0 ? (g.base - g.cost) / g.base * 100 : 0, eh:g.min > 0 ? (g.base - g.cost) / (g.min / 60) : 0})).sort((a, b) => b.mar - a.mar);
+}
+function rentData(){
+  const all = rentRows(), rows = all.filter(r => r.cost > 0);
+  return {all, rows, byType:rentGroup(rows, r => r.type), byCli:rentGroup(rows, r => (client(r.cid) || {name:'Sin cliente'}).name)};
+}
+function rentBars(gs){
+  const mx = Math.max(1, ...gs.map(g => g.pct));
+  return gs.map(g => `<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:14px"><b>${esc(g.k)}</b><span>${eur(g.mar)} · <b style="color:${g.pct < 25 ? 'var(--bad)' : 'var(--ok)'}">${Math.round(g.pct)}%</b></span></div>
+   <div style="background:var(--pri2);border-radius:6px;height:8px;margin-top:3px"><div style="width:${Math.max(2, Math.max(0, g.pct) / mx * 100)}%;height:8px;border-radius:6px;background:${g.pct < 25 ? 'var(--bad)' : 'var(--ok)'}"></div></div>
+   <div class="s" style="font-size:12px;color:var(--mut)">${g.n} trabajo(s) · ventas ${eur(g.base)} · gastos ${eur(g.cost)}${g.eh ? ' · ' + eur(g.eh) + ' por hora trabajada' : ''}</div></div>`).join('');
+}
+function rentAdvice(d){
+  const out = [];
+  for(const g of d.byType.slice().sort((a, b) => a.pct - b.pct)){
+    if(g.pct < 30 && g.base > 0){ const up = Math.ceil(((g.cost / 0.7) / g.base - 1) * 100); out.push(`«${g.k}» te deja solo un ${Math.round(g.pct)}%. Para llegar al 30% sube precios sobre un ${up}%.`); break; }
+  }
+  const best = d.byType[0]; if(best && d.byType.length > 1) out.push(`Lo que más te deja: «${best.k}» (${Math.round(best.pct)}%).`);
+  const worstC = d.byCli.slice().sort((a, b) => a.pct - b.pct)[0]; if(worstC && worstC.pct < 25 && d.byCli.length > 1) out.push(`Con «${worstC.k}» ganas poco (${Math.round(worstC.pct)}%): revisa sus precios.`);
+  return out;
+}
+function viewRent(){
+  const d = rentData(); const tb = d.rows.reduce((s, r) => s + r.base, 0), tc = d.rows.reduce((s, r) => s + r.cost, 0), mar = tb - tc;
+  const sin = d.all.length - d.rows.length;
+  if(!d.rows.length) return `<p class="note" style="margin-top:14px">Aún no hay datos. La rentabilidad se calcula con los trabajos terminados que tengan gastos de material anotados (en el trabajo o en una compra a un proveedor).</p>`;
+  const adv = rentAdvice(d);
+  return `<div class="stats" style="margin-top:12px"><div class="stat"><b style="font-size:18px">${eur(tb)}</b><span>ventas (sin IVA)</span></div><div class="stat"><b style="font-size:18px">${eur(tc)}</b><span>gastos</span></div><div class="stat"><b style="font-size:18px;color:${mar < 0 ? 'var(--bad)' : 'var(--ok)'}">${tb > 0 ? Math.round(mar / tb * 100) : 0}%</b><span>margen medio</span></div></div>
+   ${adv.length ? `<div class="card" style="padding:10px 12px;margin-top:10px;font-size:14px">${adv.map(a => '💡 ' + esc(a)).join('<br>')}</div>` : ''}
+   <label>Por tipo de trabajo</label><div class="card" style="padding:4px 12px">${rentBars(d.byType)}</div>
+   <label>Por cliente</label><div class="card" style="padding:4px 12px">${rentBars(d.byCli.slice(0, 10))}</div>
+   <p class="note">Margen = ventas sin IVA − gastos anotados.${sin ? ' ' + sin + ' trabajo(s) sin gastos anotados no cuentan.' : ''} El €/hora sale de las horas que has apuntado.</p>`;
+}
+function rentVoice(){
+  const d = rentData(); if(!d.rows.length) return reply('Todavía no tengo datos: necesito trabajos terminados con gastos anotados.');
+  const t = d.byType[0], t2 = d.byType.slice().sort((a, b) => a.pct - b.pct)[0], c = d.byCli.slice().sort((a, b) => b.pct - a.pct)[0];
+  reply('Lo que más margen te deja es «' + t.k + '»: ' + Math.round(t.pct) + '%. ' + (d.byType.length > 1 ? 'Lo que menos, «' + t2.k + '»: ' + Math.round(t2.pct) + '%. ' : '') + 'Mejor cliente: ' + c.k + ', con ' + Math.round(c.pct) + '%.', [{label:'📈 Ver rentabilidad', fn:() => { closeSheet(); bizTab = 'rent'; go('clientes'); }}]);
+}
+
+/* ======== FOTOS DE ANTES Y DESPUÉS EN EL PARTE ======== */
+let ptPh = {before:[], after:[]};
+function ptPhInit(old){ ptPh = {before:((old && old.before) || []).slice(), after:((old && old.after) || []).slice()}; setTimeout(ptPhHydrate, 30); }
+function ptPhBlock(){
+  return ['before', 'after'].map(k => `<label>${k === 'before' ? '📷 Fotos de antes' : '📷 Fotos de después'}</label><div id="pp_${k}" class="phgrid"></div>
+  <div class="acts" style="margin-top:6px"><button class="btn sec sm" onclick="$('#pp_c_${k}').click()">📷 Hacer foto</button><button class="btn sec sm" onclick="$('#pp_g_${k}').click()">🖼 Galería</button></div>
+  <input type="file" id="pp_c_${k}" accept="image/*" capture="environment" style="display:none" onchange="ptPhPick('${k}',this)"><input type="file" id="pp_g_${k}" accept="image/*" multiple style="display:none" onchange="ptPhPick('${k}',this)">`).join('');
+}
+async function ptPhHydrate(){
+  for(const k of ['before', 'after']){
+    const g = $('#pp_' + k); if(!g) continue;
+    g.innerHTML = ptPh[k].map(id => `<button class="ph" onclick="ptPhView('${k}','${id}')"><img data-p="${id}" alt=""></button>`).join('');
+    for(const id of ptPh[k]){ try{ const b = await photoGet(id); const im = g.querySelector('img[data-p="' + id + '"]'); if(b && im) im.src = URL.createObjectURL(b); }catch(_){} }
+  }
+}
+async function ptPhPick(k, inp){
+  const files = Array.from(inp.files || []); inp.value = '';
+  for(const f of files){ try{ const b = await shrinkImage(f); const id = 'p' + uid(); await photoPut(id, b); ptPh[k].push(id); }catch(e){ toast('No he podido guardar esa foto'); } }
+  ptPhHydrate();
+}
+async function ptPhView(k, id){
+  const b = await photoGet(id); if(!b) return;
+  const d = document.createElement('div'); d.id = 'pv'; d.style.cssText = 'position:fixed;inset:0;background:#000;z-index:150;display:flex;flex-direction:column';
+  d.innerHTML = `<div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center"><img src="${URL.createObjectURL(b)}" style="max-width:100%;max-height:100%"></div><div class="acts" style="padding:12px;margin:0"><button class="btn sec" onclick="document.getElementById('pv').remove()">Cerrar</button><button class="btn bad" onclick="ptPhRemove('${k}','${id}')">🗑 Quitar</button></div>`;
+  document.body.appendChild(d);
+}
+function ptPhRemove(k, id){ if(!confirm('¿Quitar esta foto?')) return; ptPh[k] = ptPh[k].filter(x => x !== id); photoDel(id).catch(() => {}); const pv = document.getElementById('pv'); if(pv) pv.remove(); ptPhHydrate(); }
+async function ptLoadImgs(d){
+  const out = {before:[], after:[]};
+  for(const k of ['before', 'after']) for(const id of (d[k] || [])){
+    try{ const b = await photoGet(id); if(!b) continue; const im = new Image(); await new Promise(res => { im.onload = res; im.onerror = res; im.src = URL.createObjectURL(b); }); out[k].push(im); }catch(_){}
+  }
+  return out;
+}
+async function ptDataUrls(d){
+  const out = {before:[], after:[]};
+  for(const k of ['before', 'after']) for(const id of (d[k] || [])){
+    try{ const b = await photoGet(id); if(!b) continue; out[k].push(await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(b); })); }catch(_){}
+  }
+  return out;
+}
+function ptExtra(ph){ if(!ph) return 0; return ['before', 'after'].reduce((s, k) => s + (ph[k].length ? 70 + Math.ceil(ph[k].length / 2) * 340 : 0), 0); }
+function ptDrawPhotos(g, ph, y, W, M){
+  if(!ph) return y;
+  for(const k of ['before', 'after']){
+    if(!ph[k].length) continue;
+    g.fillStyle = '#667385'; g.font = '700 20px system-ui,Arial,sans-serif'; g.fillText(k === 'before' ? 'FOTOS DE ANTES' : 'FOTOS DE DESPUÉS', M, y); y += 16;
+    const cw = (W - 2 * M - 16) / 2, ch = 324;
+    ph[k].forEach((im, i) => {
+      const x = M + (i % 2) * (cw + 16), yy = y + Math.floor(i / 2) * 340;
+      const sc = Math.max(cw / im.naturalWidth, ch / im.naturalHeight), sw = cw / sc, sh = ch / sc;
+      try{ g.drawImage(im, (im.naturalWidth - sw) / 2, (im.naturalHeight - sh) / 2, sw, sh, x, yy, cw, ch); }catch(_){}
+    });
+    y += Math.ceil(ph[k].length / 2) * 340 + 40;
+  }
+  return y;
+}
+
+/* ======== VOZ ======== */
+const NUMQ = {medio:0.5, media:0.5, cero:0, un:1, uno:1, una:1, dos:2, tres:3, cuatro:4, cinco:5, seis:6, siete:7, ocho:8, nueve:9, diez:10, once:11, doce:12, quince:15, veinte:20, treinta:30, cuarenta:40, cincuenta:50};
+const UNITN = {metro:'m', metros:'m', mt:'m', mts:'m', m:'m', unidad:'ud', unidades:'ud', ud:'ud', uds:'ud', kg:'kg', kilo:'kg', kilos:'kg', hora:'h', horas:'h', h:'h', litro:'l', litros:'l', l:'l', barra:'barra', barras:'barra', plancha:'plancha', planchas:'plancha', pieza:'pieza', piezas:'pieza', caja:'caja', cajas:'caja', bote:'bote', botes:'bote', saco:'saco', sacos:'saco', rollo:'rollo', rollos:'rollo'};
+function parseQtyDesc(f, o){
+  const m = /^(?:(\d+(?:[_:.]\d+)?|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|quince|veinte|treinta|cuarenta|cincuenta|medio|media)\s+)?(?:(metros?|mts?|m|unidades?|uds?|kg|kilos?|horas?|h|litros?|l|barras?|planchas?|piezas?|cajas?|botes?|sacos?|rollos?)\b\s*)?(?:de\s+)?(.*)$/.exec(f);
+  let qty = 1, ud = 'ud', desc = o;
+  if(m){
+    if(m[1]) qty = NUMQ[m[1]] != null ? NUMQ[m[1]] : (parseFloat(m[1].replace(/[_:]/g, '.')) || 1);
+    if(m[2]) ud = UNITN[m[2]] || 'ud';
+    desc = o.slice(f.length - m[3].length);
+  }
+  return {qty, ud, desc:desc.replace(/\s+/g, ' ').trim()};
+}
+function catMatch(text){
+  const q = qWords(text); if(!q.length) return null; let best = null, bs = 0;
+  for(const it of S.catalog){
+    const cw = qWords(it.desc); let sc = 0;
+    for(const w of q) if(cw.some(x => x === w || (w.length >= 4 && x.length >= 4 && (x.startsWith(w) || w.startsWith(x))))) sc++;
+    if(sc > bs || (sc === bs && best && sc > 0 && it.desc.length < best.desc.length)){ bs = sc; best = it; }
+  }
+  return bs >= Math.max(1, Math.ceil(q.length * 0.6)) ? best : null;
+}
+const byDateDesc = (a, b) => (b.date || '').localeCompare(a.date || '') || b.num.localeCompare(a.num);
+const qOpen = q => q.status !== 'Terminado' && q.status !== 'Rechazado';
+function qTarget(clr, create){
+  if(clr){ let q = S.quotes.filter(x => x.clientId === clr.cl.id && qOpen(x)).sort(byDateDesc)[0]; if(!q && create){ q = qNew({clientId:clr.cl.id}); S.quotes.push(q); } return q || null; }
+  return quoteOf(qLastId) || null;
+}
+const RE_QADD = /\b(?:anade|anadele|pon|ponle|mete|agrega|apunta|suma)\b.*\b(?:al|en el|del|para el)\s+presupuesto\b|^(?:mano de obra|desplazamiento)\b.*\bpresupuesto\b/;
+function qAddVoice(c){
+  const clr = findClient(c); dropClient(c, clr);
+  c.takeAll(/\b(?:anade|anadele|pon|ponle|mete|agrega|apunta|suma)\b/);
+  c.take(/\b(?:al|en el|del|para el)\s+presupuesto\b.*$/);
+  const q = qTarget(clr, true);
+  if(!q) return reply('¿A qué presupuesto? Dime el cliente, por ejemplo: «… al presupuesto de Marta».');
+  const f = c.f.replace(/\s+/g, ' ').trim(), o = c.o.replace(/\s+/g, ' ').trim();
+  if(!f) return reply('¿Qué añado al presupuesto?');
+  let line, txt;
+  if(/mano de obra/.test(f)){
+    const h = /(\d+(?:[_:.]\d+)?)\s*(?:horas?|h)\b/.exec(f), it = S.catalog.find(x => qNorm(x.desc) === 'mano de obra');
+    line = {desc:'Mano de obra', ud:'h', qty:h ? parseFloat(h[1].replace(/[_:]/g, '.')) : 1, price:it ? catPvp(it) : qn(S.settings.qLabor), dto:0, cost:it ? qn(it.coste) || '' : (hourRate() || '')};
+    txt = 'mano de obra, ' + nf2(line.qty).replace(',00', '') + ' h';
+  }else if(/desplazamiento/.test(f)){
+    const it = S.catalog.find(x => qNorm(x.desc) === 'desplazamiento');
+    line = {desc:'Desplazamiento', ud:'ud', qty:1, price:it ? catPvp(it) : qn(S.settings.qTravel), dto:0, cost:it ? qn(it.coste) || '' : ''}; txt = 'el desplazamiento';
+  }else{
+    const p = parseQtyDesc(f, o), it = catMatch(p.desc);
+    if(it) line = {desc:it.desc, ud:p.ud !== 'ud' ? p.ud : (it.ud || 'ud'), qty:p.qty, price:catPvp(it), dto:0, cost:qn(it.coste) || '', fromCat:1};
+    else line = {desc:cap(p.desc), ud:p.ud, qty:p.qty, price:0, dto:0, cost:''};
+    txt = nf2(line.qty).replace(',00', '') + ' ' + line.ud + ' de ' + line.desc;
+  }
+  q.lines.push(line); qSyncJob(q); qLastId = q.id; save(); render();
+  const li = q.lines.length - 1;
+  lastAction = {undo(){ q.lines.splice(li, 1); qSyncJob(q); save(); render(); }};
+  const cl = client(q.clientId), tot = qTot(q);
+  reply('Añadido: ' + txt + (line.price ? ' a ' + eur(line.price) : ' (sin precio: no está en el catálogo)') + '. El presupuesto' + (cl ? ' de ' + waName(cl) : '') + ' va por ' + eur(tot) + ' con IVA.', [{label:'🧮 Abrir', fn:() => { quoteForm(q.id); }}, {label:'↩ Deshacer', fn:undo}]);
+}
+const RE_QNEW = /\b(?:haz|hazme|crea|creame|prepara|preparame|abre|abreme|muestra|muestrame|ensename|nuevo|monta|saca|imprime|imprimeme)\b.*\bpresupuesto\b/;
+function qNewVoice(c){
+  const clr = findClient(c); dropClient(c, clr);
+  const print = /\bimprim/.test(c.f), openOnly = /\b(?:abre|abreme|muestra|muestrame|ensename|imprime|imprimeme)\b/.test(c.f);
+  c.takeAll(/\b(?:haz|hazme|crea|creame|prepara|preparame|abre|abreme|muestra|muestrame|ensename|nuevo|monta|saca|imprime|imprimeme|presupuesto|un|el|para|de|del|a)\b/);
+  const obra = cap(cleanTitle(c.o.replace(/\s+/g, ' ').trim()));
+  const ex = clr ? S.quotes.filter(x => x.clientId === clr.cl.id).sort(byDateDesc) : [];
+  if(openOnly){
+    const q = ex.find(qOpen) || ex[0] || (clr ? null : quoteOf(qLastId));
+    if(!q) return reply('No encuentro ese presupuesto. Dime el cliente, o «haz un presupuesto para Marta».');
+    reply((print ? 'Te preparo la impresión de' : 'Te abro') + ' el presupuesto ' + q.num + (clr ? ' de ' + waName(clr.cl) : '') + '.');
+    setTimeout(() => { quoteForm(q.id); if(print) setTimeout(qPrint, 600); }, 900); return;
+  }
+  reply('Te abro un presupuesto nuevo' + (clr ? ' para ' + waName(clr.cl) : '') + '. Di «añade 4 metros de perfil al presupuesto de …» o añade las líneas tú.');
+  setTimeout(() => quoteForm(null, {clientId:clr ? clr.cl.id : '', obra}), 900);
+}
+const RE_QTOT = /\b(?:cuanto|total|importe|a cuanto)\b.*\bpresupuesto\b/;
+function qTotVoice(c){
+  const clr = findClient(c), q = clr ? S.quotes.filter(x => x.clientId === clr.cl.id).sort(byDateDesc)[0] : quoteOf(qLastId) || S.quotes.slice().sort(byDateDesc)[0];
+  if(!q) return reply('No encuentro ese presupuesto.');
+  const k = qCalc(q), cl = client(q.clientId);
+  reply('El presupuesto ' + q.num + (cl ? ' de ' + waName(cl) : '') + ': ' + eur(k.base) + ' sin IVA, ' + eur(k.tot) + ' con IVA. Estado: ' + q.status + (k.cost > 0 ? '. Margen ' + Math.round(k.mar) + '%' : '') + '.');
+}
+const RE_LASTP = /\b(?:ultimo precio|a cuanto (?:compre|pague|me costo|me cobro|me sale|esta)|cuanto (?:pague|me costo|me cobro|cuesta)|precio de (?:compra|coste))\b/;
+function lastPriceVoice(c){
+  c.takeAll(/\b(?:ultimo precio|a cuanto|compre|pague|me costo|me cobro|me sale|esta|cuanto|cuesta|precio|de compra|de coste|el|la|los|las|del|de|un|una|por|ultimo|que)\b/);
+  const t = c.f.replace(/\s+/g, ' ').trim(); if(!t) return reply('¿De qué material?');
+  const cands = [...new Set(S.expenses.filter(e => e.mat).map(e => e.mat).concat(S.catalog.map(x => x.desc)))];
+  const q = qWords(t); let best = null, bs = 0;
+  for(const d of cands){ const cw = qWords(d); let sc = 0; for(const w of q) if(cw.some(x => x === w || (w.length >= 4 && x.length >= 4 && (x.startsWith(w) || w.startsWith(x))))) sc++; if(sc > bs || (sc === bs && best && sc > 0 && d.length < best.length)){ bs = sc; best = d; } }
+  if(!best || bs < 1) return reply('No tengo ese material ni en compras ni en el catálogo.');
+  const lp = lastPrice(best), it = S.catalog.find(x => qNorm(x.desc) === qNorm(best));
+  if(lp) return reply('«' + best + '»: lo último que pagaste fue ' + nf2(lp.price) + ' euros a ' + lp.sup + ' ' + (/^(hoy|ayer|manana|mañana)$/.test(spokenDay(lp.date)) ? '' : 'el ') + spokenDay(lp.date) + '.');
+  if(it && qn(it.coste) > 0) return reply('«' + best + '» tiene en el catálogo un coste de ' + nf2(it.coste) + ' euros, pero no tengo ninguna compra apuntada.');
+  reply('No tengo precio de «' + best + '».');
+}
+const RE_BUY = /\b(?:he comprado|compre|comprado|he pagado|pague)\b/;
+function supFind(c){
+  let best = null;
+  for(const s of S.suppliers){ const n = qNorm(s.name); if(n && c.f.includes(n) && (!best || n.length > best.n.length)) best = {s, n}; }
+  return best;
+}
+function buyVoice(c){
+  const sf = supFind(c); if(!sf) return false;
+  const re = new RegExp('\\b(?:a|en|al|de)?\\s*' + reEsc(sf.n) + '\\b'); c.take(re);
+  c.takeAll(/\b(?:he comprado|compre|comprado|he pagado|pague)\b/);
+  let unit = 0, total = 0, m;
+  if((m = /\b(?:a|por)\s+(\d+(?:[_:.]\d+)?)\s*(?:euros?|€)?(?:\s+(?:el|la|cada|por)\s+\w+)?/.exec(c.f))){
+    const v = parseFloat(m[1].replace(/[_:]/g, '.')); if(/\bpor\b/.test(m[0]) && !/\bcada\b/.test(m[0])) total = v; else unit = v;
+    c.cut(m);
+  }
+  const f = c.f.replace(/\s+/g, ' ').trim(), o = c.o.replace(/\s+/g, ' ').trim();
+  const p = parseQtyDesc(f, o); if(!p.desc) { reply('¿Qué material has comprado?'); return true; }
+  if(!unit && total) unit = r2(total / (p.qty || 1));
+  if(!unit){ reply('¿A cuánto? Dime por ejemplo: «he comprado ' + p.qty + ' ' + p.desc + ' a ' + sf.s.name + ' a 3,20 euros».'); return true; }
+  const it = catMatch(p.desc), mat = it ? it.desc : cap(p.desc);
+  buyRecord({supId:sf.s.id, mat, qty:p.qty, ud:p.ud !== 'ud' ? p.ud : (it ? it.ud : 'ud'), price:unit, date:today(), jobId:'', toCat:true});
+  reply('Apuntado: ' + nf2(p.qty).replace(',00', '') + ' ' + (p.ud !== 'ud' ? p.ud + ' de ' : '') + mat + ' a ' + sf.s.name + ' a ' + nf2(unit) + ' euros. He puesto ese precio como coste en el catálogo.');
+  return true;
+}
+const RE_RENT = /\b(?:rentabilidad|margen)\b.*\b(?:trabajos?|clientes?|tipos?)\b|\bque (?:trabajos?|tipos? de trabajo|clientes?) (?:me )?(?:dejan?|deja) mas\b|\bdonde (?:gano|saco) mas\b|\bque me deja mas\b/;
+
 /* ======== ACTUALIZACIONES ======== */
-const APP_VERSION = '2026-11-02.090904';
+const APP_VERSION = '2026-11-02.093938';
 let updState = {latest:'', checking:false, msg:''};
 const isWeb = () => /^https?:/.test(location.protocol);
 const verRe = () => new RegExp('APP_VERSION'+" = '([^']+)'");
