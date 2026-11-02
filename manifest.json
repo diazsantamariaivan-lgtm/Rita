@@ -22,5 +22,65 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Hablar con Rita",
+      "short_name": "Hablar",
+      "description": "Dile a Rita lo que necesitas",
+      "url": "./index.html#hablar",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Nueva cita",
+      "short_name": "Cita",
+      "url": "./index.html#cita",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Gasto rápido",
+      "short_name": "Gasto",
+      "url": "./index.html#gasto",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Nueva nota",
+      "short_name": "Nota",
+      "url": "./index.html#nota",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

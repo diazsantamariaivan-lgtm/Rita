@@ -107,6 +107,7 @@ html[data-theme="sun"]{--bg:#fff;--card:#fff;--tx:#000;--mut:#2b2b2b;--line:#222
 html[data-theme="sun"] .card,html[data-theme="sun"] .stat,html[data-theme="sun"] input,html[data-theme="sun"] select,html[data-theme="sun"] textarea{border:2px solid #222}
 html[data-theme="sun"] .btn{border:2px solid #000;font-weight:800}
 html[data-theme="sun"] body{font-weight:600}
+.sigpad{width:100%;height:150px;border:2px dashed var(--mut);border-radius:12px;background:#fff;touch-action:none;display:block}
 .brand{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--acc);margin-bottom:2px}
 @media (min-width:900px){#app{max-width:760px}.fab{right:calc(50% - 364px)}.fab.mic{right:calc(50% - 296px)}}
 .phgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px}.ph{padding:0;border:0;border-radius:10px;overflow:hidden;aspect-ratio:1;background:var(--pri2)}.ph img{width:100%;height:100%;object-fit:cover;display:block}
@@ -128,7 +129,7 @@ html[data-theme="sun"] body{font-weight:600}
 'use strict';
 /* ======== Datos ======== */
 const KEY = 'secretaria_v1';
-function blank(){ return {events:[],tasks:[],clients:[],notes:[],jobs:[],expenses:[],shop:[],notified:{},settings:{name:'Iván',remind:15,hourStart:'09:00',voiceOut:true,speakReminders:true,rate:1,lastBackup:'',brief:true,briefTime:'08:00',hourRate:0,quoteUrl:'',weekly:true,timer:null,syncNudgeOff:false,lastUpdCheck:0,tpl:null,theme:'auto',zoom:100,ivaPct:21,ivaIncl:true,home:'Renedo de Piélagos',gemKey:'',gemModel:'gemini-3.8-flash',icon:null,wx:null,gToken:'',gId:'',gKey:'',gLast:0,ntfy:false,ntfyTopic:'',ntfyHide:false,ntfyMap:{}}}; }
+function blank(){ return {events:[],tasks:[],clients:[],notes:[],jobs:[],expenses:[],shop:[],notified:{},settings:{name:'Iván',remind:15,hourStart:'09:00',voiceOut:true,speakReminders:true,rate:1,lastBackup:'',brief:true,briefTime:'08:00',hourRate:0,quoteUrl:'',weekly:true,timer:null,syncNudgeOff:false,lastUpdCheck:0,tpl:null,bizName:'',bizPhone:'',bizNif:'',theme:'auto',zoom:100,ivaPct:21,ivaIncl:true,home:'Renedo de Piélagos',gemKey:'',gemModel:'gemini-3.8-flash',icon:null,wx:null,gToken:'',gId:'',gKey:'',gLast:0,ntfy:false,ntfyTopic:'',ntfyHide:false,ntfyMap:{}}}; }
 function load(){
   try{
     const d = JSON.parse(localStorage.getItem(KEY));
@@ -1233,7 +1234,7 @@ function startListen(){
 function toggleListen(){ if(listening){ stopRec(); setStatus('Pulsa el micrófono para hablar.'); } else startListen(); }
 function stopVoice(){ voiceOpen = false; pending = null; stopRec(); try{ speechSynthesis.cancel(); }catch(_){} }
 
-const EXAMPLES = ['¿Qué tengo hoy?','Ruta de hoy','¿Quién me debe dinero?','He enviado presupuesto a Gómez de 1200 euros','Gómez me ha pagado 450 euros','Informe del trimestre','Muéstrame lo de Gómez','¿Qué garantías vencen pronto?','Empiezo en la cancela de Marta','Termino','Necesito comprar tornillos y discos de corte','Gasolina 40 euros para la cancela de Marta','¿Cuánto llevo gastado en la cancela de Marta?','¿Cuánto he ganado este mes?','Confirma la cita con Gómez por WhatsApp','¿Qué tiempo hace mañana?','Recuérdame llamar a Gómez mañana a las 9','Anota: pedir 20 metros de perfil','Llama a Gómez','Resumen del día'];
+const EXAMPLES = ['¿Qué tengo hoy?','Ruta de hoy','¿Quién me debe dinero?','He enviado presupuesto a Gómez de 1200 euros','Gómez me ha pagado 450 euros','Haz el parte de la cancela de Marta','Informe del trimestre','Muéstrame lo de Gómez','¿Qué garantías vencen pronto?','Empiezo en la cancela de Marta','Termino','Necesito comprar tornillos y discos de corte','Gasolina 40 euros para la cancela de Marta','¿Cuánto llevo gastado en la cancela de Marta?','¿Cuánto he ganado este mes?','Confirma la cita con Gómez por WhatsApp','¿Qué tiempo hace mañana?','Recuérdame llamar a Gómez mañana a las 9','Anota: pedir 20 metros de perfil','Llama a Gómez','Resumen del día'];
 function openVoice(cmd){
   voiceOpen = true;
   sheet(`<h3>🎙️ Rita</h3>
@@ -1276,6 +1277,7 @@ function handle(raw){
   if(RE_INFORME.test(F)) return informeVoice(c);
   if(RE_WARR.test(F)) return warrantyVoice();
   if(RE_FIND.test(F)) return findVoice(c);
+  if(RE_PARTE.test(F)) return parteVoice(c);
   if(RE_TSTOP.test(F)) return timerStopVoice();
   if(RE_TSTART.test(F)) return timerStartVoice(c);
   if(RE_HOURSQ.test(F)) return hoursQVoice(c);
@@ -1495,7 +1497,7 @@ function briefing(){
   reply(s);
 }
 function help(){
-  reply('Puedes decirme, por ejemplo: «¿Qué tengo hoy?». «Recuérdame llamar a Gómez mañana a las nueve». «Apunta cita con Marta el viernes a las cinco y media». «Anota: pedir perfiles». «Llama a Gómez». «¿Cuál es mi próxima cita?». «Marca como hecha la llamada de Gómez». «Pospón la cita de Gómez para el lunes». «¿Qué tiempo hace mañana?». «Últimas noticias». «¿A cuánto está el dólar?». Y, si has puesto tu clave de Google, cualquier pregunta: la busco en internet. «Gómez me debe 450 euros». «He enviado presupuesto a Gómez de 1200 euros». «Gasolina 40 euros para la cancela de Marta». «¿Cuánto llevo gastado en la cancela de Marta?». «¿Cuánto he ganado este mes?». «Empiezo en la cancela de Marta», y al acabar, «termino». «Necesito comprar tornillos». «Informe del trimestre». «Muéstrame lo de Gómez». «¿Qué garantías vencen pronto?». «Ruta de hoy». «Confirma la cita con Gómez por WhatsApp». «Deshaz eso».');
+  reply('Puedes decirme, por ejemplo: «¿Qué tengo hoy?». «Recuérdame llamar a Gómez mañana a las nueve». «Apunta cita con Marta el viernes a las cinco y media». «Anota: pedir perfiles». «Llama a Gómez». «¿Cuál es mi próxima cita?». «Marca como hecha la llamada de Gómez». «Pospón la cita de Gómez para el lunes». «¿Qué tiempo hace mañana?». «Últimas noticias». «¿A cuánto está el dólar?». Y, si has puesto tu clave de Google, cualquier pregunta: la busco en internet. «Gómez me debe 450 euros». «He enviado presupuesto a Gómez de 1200 euros». «Gasolina 40 euros para la cancela de Marta». «¿Cuánto llevo gastado en la cancela de Marta?». «¿Cuánto he ganado este mes?». «Empiezo en la cancela de Marta», y al acabar, «termino». «Necesito comprar tornillos». «Haz el parte de la cancela de Marta». «Informe del trimestre». «Muéstrame lo de Gómez». «¿Qué garantías vencen pronto?». «Ruta de hoy». «Confirma la cita con Gómez por WhatsApp». «Deshaz eso».');
 }
 function undo(){
   if(!lastAction) return reply('No tengo nada que deshacer.');
@@ -1871,6 +1873,9 @@ async function applyIcon(){
     if(cfg.custom){
       const m = {name:cfg.name, short_name:String(cfg.name).slice(0,12), start_url:location.href.split('#')[0], display:'standalone', background_color:cfg.bg, theme_color:cfg.bg,
         icons:[{src:u192, sizes:'192x192', type:'image/png', purpose:'any maskable'}, {src:u512, sizes:'512x512', type:'image/png', purpose:'any maskable'}]};
+      const base = location.href.split('#')[0].split('?')[0], sic = [{src:u192, sizes:'192x192', type:'image/png'}];
+      m.shortcuts = [['Hablar con '+String(cfg.name).slice(0,12),'Hablar','hablar'], ['Nueva cita','Cita','cita'], ['Gasto rápido','Gasto','gasto'], ['Nueva nota','Nota','nota']].map(([n,s,h]) => ({name:n, short_name:s, url:base+'#'+h, icons:sic}));
+      m.share_target = {action:base, method:'GET', params:{title:'title', text:'text', url:'url'}};
       head.querySelectorAll('link[rel="manifest"]').forEach(l => l.remove());
       const ml = document.createElement('link'); ml.rel = 'manifest'; ml.href = URL.createObjectURL(new Blob([JSON.stringify(m)], {type:'application/manifest+json'})); head.appendChild(ml);
     }
@@ -2040,10 +2045,10 @@ function jobForm(id, pre){
   <label>Notas y medidas</label><textarea id="j_notes" placeholder="Ej: hueco 2,40 × 2,10, guía a la izquierda">${esc(j.notes)}</textarea>
   <label>Ofrecer revisión al terminar</label><select id="j_rev"><option value="">No</option>${[6,12,24].map(m => `<option value="${m}" ${+j.revMonths===m?'selected':''}>A los ${m} meses</option>`).join('')}</select>
   <label>Garantía de la instalación</label><select id="j_war"><option value="">Sin garantía</option>${[12,24,36,60].map(m => `<option value="${m}" ${+j.warrantyMonths===m?'selected':''}>${m/12} ${m>12?'años':'año'}</option>`).join('')}</select>
-  ${id ? cuentasBlock(j) : ''}
+  ${id ? cuentasBlock(j) + partesList(j) : ''}
   ${photoBlock()}
   <div class="acts"><button class="btn" onclick="saveJob(${id?`'${id}'`:'null'})">Guardar</button><button class="btn sec" onclick="closeSheet()">Cancelar</button></div>
-  ${id?`<div class="acts">${jobWaBtn(j)}${revWaBtn(j)}<button class="btn bad" onclick="delJob('${id}')">Borrar</button></div>`:''}`);
+  ${id?`<div class="acts"><button class="btn sec" onclick="parteForm('${id}')">🧾 Parte de trabajo</button>${jobWaBtn(j)}${revWaBtn(j)}<button class="btn bad" onclick="delJob('${id}')">Borrar</button></div>`:''}`);
   hydratePhotos();
 }
 function cuentasBlock(j){
@@ -2585,7 +2590,8 @@ function bizSetBlock(){
   return `<div class="set"><h4>💼 Tu negocio</h4>
    <label style="margin-top:0">Precio de tu hora (€)</label><input type="number" inputmode="decimal" step="0.5" value="${st.hourRate||''}" placeholder="Ej: 30" onchange="S.settings.hourRate=parseFloat(this.value)||0;persist();toast('Guardado')">
    <p class="note">Con esto, Rita descuenta el valor de tu tiempo en el margen de cada trabajo.</p>
-   <label>Dirección de tu presupuesto rápido</label><input type="url" value="${esc(st.quoteUrl||'')}" placeholder="https://…" onchange="S.settings.quoteUrl=this.value.trim();persist();toast('Guardado')">${ivaBlock()}</div>`;
+   <label>Dirección de tu presupuesto rápido</label><input type="url" value="${esc(st.quoteUrl||'')}" placeholder="https://…" onchange="S.settings.quoteUrl=this.value.trim();persist();toast('Guardado')">${ivaBlock()}
+   <label>Tus datos para los partes de trabajo</label><input value="${esc(st.bizName||'')}" placeholder="Nombre o empresa" onchange="S.settings.bizName=this.value.trim();persist()"><div class="two" style="margin-top:8px"><input value="${esc(st.bizPhone||'')}" placeholder="Teléfono" inputmode="tel" onchange="S.settings.bizPhone=this.value.trim();persist()"><input value="${esc(st.bizNif||'')}" placeholder="NIF" onchange="S.settings.bizNif=this.value.trim();persist()"></div></div>`;
 }
 
 /* --- lista de material --- */
@@ -2841,7 +2847,8 @@ function clientHistory(id){
   const en = [];
   S.events.filter(e => e.clientId===id).forEach(e => en.push({d:e.date, ic:'📅', t:e.title, s:(e.time||'')+(e.place?' · '+e.place:''), fn:`evForm('${e.id}')`}));
   jobs.forEach(j => { en.push({d:j.sentDate || j.doneDate || '', ic:'💶', t:j.title, s:JSTAT[j.status]+' · '+eur(j.amount)+(warrantyEnd(j) ? ' · garantía hasta '+shortDate(warrantyEnd(j)) : ''), fn:`jobForm('${j.id}')`});
-    (j.payments||[]).forEach(p => en.push({d:p.date, ic:'✅', t:'Cobro de '+eur(p.amount), s:j.title, fn:`jobForm('${j.id}')`})); });
+    (j.payments||[]).forEach(p => en.push({d:p.date, ic:'✅', t:'Cobro de '+eur(p.amount), s:j.title, fn:`jobForm('${j.id}')`}));
+    (j.partes||[]).forEach(p => en.push({d:p.date, ic:'🧾', t:'Parte de trabajo firmado', s:j.title+(p.signer?' · '+p.signer:''), fn:`parteForm('${j.id}','${p.id}')`})); });
   S.expenses.filter(e => e.clientId===id).forEach(e => en.push({d:e.date, ic:'🧾', t:e.concept+' · '+eur(e.amount), s:e.cat, fn:`expForm('${e.id}')`}));
   en.sort((a,b) => (b.d||'').localeCompare(a.d||''));
   const photos = jobs.flatMap(j => j.photos||[]).slice(0,12);
@@ -2980,8 +2987,161 @@ function displayBlock(){
    <p class="note">«Sol» pone fondo blanco y letras negras con bordes marcados, para verla al aire libre o con guantes puestos.</p></div>`;
 }
 
+/* ======== ATAJOS DEL ICONO, COMPARTIR HACIA RITA Y PARTE DE TRABAJO ======== */
+
+/* --- al abrir: atajos (#hablar, #cita, #gasto, #nota) y contenido compartido (?text=…) --- */
+function geoFrom(t){
+  const m = /[?&](?:q|query|ll|destination)=(-?\d{1,3}\.\d+)(?:,|%2C)(-?\d{1,3}\.\d+)/i.exec(t) || /@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/.exec(t) || /geo:(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/.exec(t);
+  return m ? m[1]+','+m[2] : '';
+}
+function handleLaunch(){
+  const h = (location.hash || '').replace('#',''), q = new URLSearchParams(location.search);
+  const text = [q.get('title'), q.get('text'), q.get('url')].filter(Boolean).join('\n').trim();
+  let done = true;
+  if(text) shareSheet(text);
+  else if(h === 'hablar') openVoice();
+  else if(h === 'cita') evForm(null, {date:today()});
+  else if(h === 'gasto'){ bizTab = 'gas'; tab = 'clientes'; render(); expForm(); }
+  else if(h === 'nota') noteForm();
+  else done = false;
+  if(done){ try{ history.replaceState(null, '', location.pathname); }catch(_){} }
+}
+let shareTxt = '';
+function shareSheet(text){
+  shareTxt = text;
+  sheet(`<h3>📥 Compartido con Rita</h3>
+  <div class="vbox" style="display:block;white-space:pre-wrap;max-height:130px;overflow:auto;word-break:break-word">${esc(text)}</div>
+  <p class="note" style="margin:8px 2px 0">¿Qué hago con esto?</p>
+  <div class="qa"><button onclick="shareTo('nota')"><i>🗒️</i>Nota</button><button onclick="shareTo('tarea')"><i>📝</i>Tarea</button><button onclick="shareTo('cita')"><i>📅</i>Cita</button><button onclick="shareTo('material')"><i>🛒</i>Material</button></div>
+  <label>O guardarlo como dirección de un cliente</label>
+  <div style="display:flex;gap:8px"><select id="sh_cl">${clientOpts('')}</select><button class="btn sec" style="flex:none" onclick="shareTo('direccion')">Guardar</button></div>
+  <div class="acts"><button class="btn sec" onclick="closeSheet()">Cancelar</button></div>`);
+}
+function shareTo(k){
+  const t = shareTxt || '', clean = t.replace(/https?:\/\/\S+/g,'').replace(/\s+\n/g,'\n').trim(), first = (clean || t).split('\n').find(x => x.trim()) || t;
+  if(k === 'nota'){ S.notes.unshift({id:uid(), text:t.slice(0,2000), ts:Date.now()}); save(); closeSheet(); tab = 'tareas'; taskTab = 'notas'; render(); return toast('Guardado en notas'); }
+  if(k === 'tarea'){ closeSheet(); return taskForm(null, {title:first.slice(0,90), notes:t.slice(0,600)}); }
+  if(k === 'cita'){ closeSheet(); return evForm(null, {title:first.slice(0,80), place:geoFrom(t), notes:t.slice(0,600), date:today()}); }
+  if(k === 'material'){
+    const items = (clean || t).split('\n').map(x => x.trim()).filter(Boolean).slice(0,12);
+    items.forEach(x => S.shop.push({id:uid(), text:cap(x.slice(0,90)), done:false, jobId:'', ts:Date.now()})); save(); closeSheet(); bizTab = 'shop'; tab = 'clientes'; render(); return toast(items.length+' en la lista de material');
+  }
+  if(k === 'direccion'){
+    const c = client(val('sh_cl')); if(!c) return toast('Elige un cliente');
+    c.address = geoFrom(t) || clean.replace(/\s+/g,' ').slice(0,140) || t.slice(0,140); save(); closeSheet(); render(); toast('Dirección guardada en '+c.name);
+  }
+}
+
+/* --- parte de trabajo con firma del cliente --- */
+let parteCtx = null, sigOn = false, sigHas = false;
+function partesList(j){
+  const ps = j.partes || []; if(!ps.length) return '';
+  return `<label>Partes firmados</label><div class="card">${ps.slice().reverse().map(p => `<div class="row" onclick="parteForm('${j.id}','${p.id}')"><span class="ic">🧾</span><div class="mid"><div class="t">Parte del ${shortDate(p.date)}</div><div class="s">${esc(p.signer||'sin nombre')} · ${p.min ? fmtMin(p.min) : 'sin horas'}</div></div></div>`).join('')}</div>`;
+}
+function parteForm(jobId, parteId){
+  const j = S.jobs.find(x => x.id===jobId); if(!j) return;
+  const cl = client(j.clientId), old = parteId ? (j.partes||[]).find(p => p.id===parteId) : null;
+  const mats = old ? old.materials : jobExp(j).filter(e => e.cat==='Material' || e.cat==='Herramientas').map(e => e.concept).join('\n');
+  const mins = old ? (old.min||0) : jobMin(j);
+  parteCtx = {jobId, parteId:parteId||null};
+  sheet(`<h3>🧾 Parte de trabajo</h3>
+  <p class="note" style="margin:0">${esc(j.title)}${cl ? ' · '+esc(cl.name) : ''}</p>
+  <div class="two"><div><label>Fecha</label><input id="pt_date" type="date" value="${old ? old.date : today()}"></div><div><label>Horas (h)</label><input id="pt_h" type="number" step="0.25" inputmode="decimal" value="${mins ? Math.round(mins/60*100)/100 : ''}"></div></div>
+  <label>Trabajo realizado</label><textarea id="pt_work" style="min-height:90px" placeholder="Ej: montaje de cancela corredera, motor y fotocélulas">${esc(old ? old.work : (j.notes || j.title))}</textarea>
+  <label>Materiales</label><textarea id="pt_mat" style="min-height:70px" placeholder="Uno por línea">${esc(mats)}</textarea>
+  <label>Observaciones</label><textarea id="pt_obs" style="min-height:56px">${esc(old ? old.obs : '')}</textarea>
+  <label>Nombre de quien firma</label><input id="pt_name" value="${esc(old ? old.signer : (cl ? waName(cl) : ''))}">
+  <label>Firma del cliente (con el dedo)</label><canvas id="pt_sig" class="sigpad" width="600" height="220"></canvas>
+  <div class="acts" style="margin-top:6px"><button class="btn sec sm" onclick="sigInit('')">Borrar firma</button></div>
+  <div class="acts"><button class="btn" onclick="parteSave()">Guardar parte</button><button class="btn sec" onclick="partePrint()">🖨 PDF</button><button class="btn ok" onclick="parteShare()">📤 Compartir</button></div>
+  <div class="acts"><button class="btn sec" onclick="jobForm('${jobId}')">‹ Volver al trabajo</button></div>
+  <p class="note">La firma sirve como conformidad del cliente con el trabajo hecho; no sustituye a un contrato.</p>`);
+  sigInit(old ? old.sig : '');
+}
+function sigInit(dataUrl){
+  const cv = $('#pt_sig'); if(!cv) return; const g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.strokeStyle = '#111'; g.lineWidth = 5; g.lineCap = 'round'; g.lineJoin = 'round'; sigHas = false;
+  if(dataUrl){ const im = new Image(); im.onload = () => { g.drawImage(im, 0, 0, cv.width, cv.height); sigHas = true; }; im.src = dataUrl; }
+  const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height]; };
+  cv.onpointerdown = e => { e.preventDefault(); sigOn = true; sigHas = true; try{ cv.setPointerCapture(e.pointerId); }catch(_){} const [x,y] = pos(e); g.beginPath(); g.moveTo(x, y); g.lineTo(x+0.1, y+0.1); g.stroke(); };
+  cv.onpointermove = e => { if(!sigOn) return; e.preventDefault(); const [x,y] = pos(e); g.lineTo(x, y); g.stroke(); };
+  cv.onpointerup = cv.onpointercancel = () => { sigOn = false; };
+}
+function parteCollect(){
+  const j = S.jobs.find(x => x.id === (parteCtx||{}).jobId); if(!j) return null;
+  const work = val('pt_work').trim(); if(!work){ toast('Escribe el trabajo realizado'); return null; }
+  let sig = '';
+  if(sigHas){ const src = $('#pt_sig'), t = document.createElement('canvas'); t.width = 360; t.height = 132; const g = t.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0,0,360,132); g.drawImage(src, 0, 0, 360, 132); sig = t.toDataURL('image/png'); }
+  return {j, d:{id:parteCtx.parteId || uid(), date:val('pt_date') || today(), min:Math.round((parseFloat(val('pt_h')) || 0) * 60), work, materials:val('pt_mat').trim(), obs:val('pt_obs').trim(), signer:val('pt_name').trim(), sig}};
+}
+function parteSave(quiet){
+  const r = parteCollect(); if(!r) return null;
+  r.j.partes = (r.j.partes||[]).filter(p => p.id !== r.d.id).concat([r.d]); parteCtx.parteId = r.d.id; save();
+  if(!quiet) toast('Parte guardado'); return r;
+}
+function parteRows(d, j){
+  const cl = client(j.clientId), me = S.settings.bizName || S.settings.name || '';
+  return {me, phone:S.settings.bizPhone||'', nif:S.settings.bizNif||'', cl,
+    rows:[['Fecha', shortDate(d.date)+' '+d.date.slice(0,4)], ['Cliente', cl ? cl.name : '—'], ['Dirección', cl && cl.address ? cl.address : ''], ['Trabajo', j.title], ['Horas', d.min ? fmtMin(d.min) : ''],
+      ['Trabajo realizado', d.work], ['Materiales', d.materials], ['Observaciones', d.obs]].filter(r => r[1])};
+}
+function renderParteCanvas(d, j, sigImg){
+  const info = parteRows(d, j), W = 900, M = 48, cv = document.createElement('canvas'); cv.width = W; cv.height = 2600;
+  const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, 2600);
+  g.fillStyle = '#1d4e89'; g.fillRect(0, 0, W, 120);
+  g.fillStyle = '#fff'; g.textBaseline = 'alphabetic'; g.font = '800 42px system-ui,Arial,sans-serif'; g.fillText('PARTE DE TRABAJO', M, 76);
+  g.font = '500 24px system-ui,Arial,sans-serif'; g.textAlign = 'right'; g.fillText(info.me, W-M, 56); if(info.phone || info.nif) g.fillText([info.phone, info.nif].filter(Boolean).join(' · '), W-M, 92); g.textAlign = 'left';
+  let y = 170;
+  const wrap = (text, x, maxW, lh) => { for(const para of String(text||'').split('\n')){ let line = ''; for(const w of para.split(/\s+/)){ const t = line ? line+' '+w : w; if(g.measureText(t).width > maxW && line){ g.fillText(line, x, y); y += lh; line = w; } else line = t; } g.fillText(line, x, y); y += lh; } };
+  for(const [k, v] of info.rows){
+    g.fillStyle = '#667385'; g.font = '700 20px system-ui,Arial,sans-serif'; g.fillText(k.toUpperCase(), M, y); y += 34;
+    g.fillStyle = '#111'; g.font = '500 28px system-ui,Arial,sans-serif'; wrap(v, M, W - 2*M, 38); y += 18;
+  }
+  y += 10; g.fillStyle = '#667385'; g.font = '700 20px system-ui,Arial,sans-serif'; g.fillText('CONFORME DEL CLIENTE', M, y); y += 16;
+  g.strokeStyle = '#c8d0db'; g.lineWidth = 2; g.strokeRect(M, y, 420, 154);
+  if(sigImg && d.sig){ try{ g.drawImage(sigImg, M+4, y+4, 412, 146); }catch(_){} }
+  g.fillStyle = '#111'; g.font = '500 26px system-ui,Arial,sans-serif'; g.fillText(d.signer || '', M + 450, y + 70); g.fillStyle = '#667385'; g.font = '400 22px system-ui,Arial,sans-serif'; g.fillText(d.date, M + 450, y + 108);
+  y += 154 + 50; g.fillStyle = '#9aa5b5'; g.font = '400 18px system-ui,Arial,sans-serif'; g.fillText('Generado con Rita', M, y);
+  const out = document.createElement('canvas'); out.width = W; out.height = y + M; out.getContext('2d').drawImage(cv, 0, 0); return out;
+}
+async function parteShare(){
+  const r = parteSave(true); if(!r) return;
+  let sigImg = null; if(r.d.sig){ sigImg = new Image(); await new Promise(res => { sigImg.onload = res; sigImg.onerror = res; sigImg.src = r.d.sig; }); }
+  const cv = renderParteCanvas(r.d, r.j, sigImg);
+  cv.toBlob(async blob => {
+    const name = 'parte-'+r.d.date+'.png', f = new File([blob], name, {type:'image/png'});
+    try{
+      if(navigator.canShare && navigator.canShare({files:[f]})){ await navigator.share({files:[f], title:'Parte de trabajo'}); return; }
+    }catch(e){ if(e && e.name === 'AbortError') return; }
+    download(name, blob, 'image/png'); toast('Parte guardado como imagen: envíalo desde tus descargas');
+  }, 'image/png');
+}
+function parteHtml(d, j){
+  const info = parteRows(d, j);
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Parte de trabajo</title><style>body{font:15px system-ui,Arial;margin:32px;color:#111}.h{background:#1d4e89;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-radius:6px}.h b{font-size:22px}.k{color:#667385;font-size:11px;font-weight:700;text-transform:uppercase;margin-top:14px}.v{white-space:pre-wrap;font-size:16px}.sig{border:1px solid #c8d0db;width:300px;height:110px;margin-top:6px}.f{color:#999;font-size:11px;margin-top:30px}</style></head><body>
+  <div class="h"><b>PARTE DE TRABAJO</b><span style="text-align:right">${esc(info.me)}<br>${esc([info.phone, info.nif].filter(Boolean).join(' · '))}</span></div>
+  ${info.rows.map(([k,v]) => `<div class="k">${esc(k)}</div><div class="v">${esc(v)}</div>`).join('')}
+  <div class="k">Conforme del cliente</div>${d.sig ? `<img class="sig" src="${d.sig}">` : '<div class="sig"></div>'}<div class="v">${esc(d.signer||'')} · ${esc(d.date)}</div><div class="f">Generado con Rita</div></body></html>`;
+}
+function partePrint(){
+  const r = parteSave(true); if(!r) return;
+  const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'; document.body.appendChild(f);
+  const dd = f.contentDocument; dd.open(); dd.write(parteHtml(r.d, r.j)); dd.close();
+  setTimeout(() => { try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(_){ toast('No he podido abrir la impresión: usa Compartir'); } setTimeout(() => f.remove(), 60000); }, 500);
+}
+const RE_PARTE = /\b(?:haz|hazme|crea|prepara|abre|saca|genera)\b.*\b(?:parte|albaran)\b/;
+function parteVoice(c){
+  const cl = findClient(c); dropClient(c, cl);
+  const pool = S.jobs.filter(j => j.status !== 'perdido');
+  let j = (pickItem(c.o, pool.map(o => ({o}))) || {}).o;
+  if(!j && cl) j = pool.filter(x => x.clientId===cl.cl.id).sort((a,b) => (b.sentDate||b.doneDate||'').localeCompare(a.sentDate||a.doneDate||''))[0];
+  if(!j && pool.length === 1) j = pool[0];
+  if(!j) return reply('¿De qué trabajo? Dime el cliente o parte del nombre.');
+  reply('Te abro el parte de «'+j.title+'» para que lo firme el cliente.'); setTimeout(() => parteForm(j.id), 900);
+}
+
 /* ======== ACTUALIZACIONES ======== */
-const APP_VERSION = '2026-11-02.084831';
+const APP_VERSION = '2026-11-02.090904';
 let updState = {latest:'', checking:false, msg:''};
 const isWeb = () => /^https?:/.test(location.protocol);
 const verRe = () => new RegExp('APP_VERSION'+" = '([^']+)'");
@@ -3040,6 +3200,7 @@ setInterval(checkReminders, 20000);
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ checkReminders(); if(tab==='hoy') render(); } });
 applyDisplay();
 lockInit();
+setTimeout(handleLaunch, 300);
 setInterval(() => { if(S.settings.timer && tab==='hoy' && !$('#sheet').classList.contains('open')) render(); }, 60000);
 $('#mic').addEventListener('click', () => openVoice());
 if('speechSynthesis' in window) speechSynthesis.getVoices();
