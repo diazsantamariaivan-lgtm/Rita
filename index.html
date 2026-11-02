@@ -101,6 +101,12 @@ header.top p{text-transform:none}header.top p::first-letter{text-transform:upper
 .tg{display:flex;align-items:center;gap:10px;margin:8px 0}
 .tg input{width:22px;height:22px;flex:none}
 .hd{display:flex;justify-content:space-between;align-items:flex-end;gap:8px}
+html[data-theme="light"]{--bg:#f3f5f8;--card:#fff;--tx:#17212e;--mut:#667385;--line:#e1e6ed;--pri:#1d4e89;--pri2:#e5eef9;--acc:#e87722;--ok:#2e8b57;--bad:#c9302c;--warn:#b7791f;--sh:0 1px 3px rgba(20,40,70,.08)}
+html[data-theme="dark"]{--bg:#10151c;--card:#1a222d;--tx:#e8edf3;--mut:#93a1b3;--line:#2a3441;--pri:#5b9bdc;--pri2:#1e2f45;--acc:#f0903f;--ok:#4cc38a;--bad:#ef6a65;--warn:#e0b050;--sh:none}
+html[data-theme="sun"]{--bg:#fff;--card:#fff;--tx:#000;--mut:#2b2b2b;--line:#222;--pri:#0a3a8a;--pri2:#dbe6fb;--acc:#b34700;--ok:#0b6b2c;--bad:#b00000;--warn:#8a5a00;--sh:none}
+html[data-theme="sun"] .card,html[data-theme="sun"] .stat,html[data-theme="sun"] input,html[data-theme="sun"] select,html[data-theme="sun"] textarea{border:2px solid #222}
+html[data-theme="sun"] .btn{border:2px solid #000;font-weight:800}
+html[data-theme="sun"] body{font-weight:600}
 .brand{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--acc);margin-bottom:2px}
 @media (min-width:900px){#app{max-width:760px}.fab{right:calc(50% - 364px)}.fab.mic{right:calc(50% - 296px)}}
 .phgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px}.ph{padding:0;border:0;border-radius:10px;overflow:hidden;aspect-ratio:1;background:var(--pri2)}.ph img{width:100%;height:100%;object-fit:cover;display:block}
@@ -122,7 +128,7 @@ header.top p{text-transform:none}header.top p::first-letter{text-transform:upper
 'use strict';
 /* ======== Datos ======== */
 const KEY = 'secretaria_v1';
-function blank(){ return {events:[],tasks:[],clients:[],notes:[],jobs:[],expenses:[],shop:[],notified:{},settings:{name:'Iván',remind:15,hourStart:'09:00',voiceOut:true,speakReminders:true,rate:1,lastBackup:'',brief:true,briefTime:'08:00',hourRate:0,quoteUrl:'',weekly:true,timer:null,home:'Renedo de Piélagos',gemKey:'',gemModel:'gemini-3.8-flash',icon:null,wx:null,gToken:'',gId:'',gKey:'',gLast:0,ntfy:false,ntfyTopic:'',ntfyHide:false,ntfyMap:{}}}; }
+function blank(){ return {events:[],tasks:[],clients:[],notes:[],jobs:[],expenses:[],shop:[],notified:{},settings:{name:'Iván',remind:15,hourStart:'09:00',voiceOut:true,speakReminders:true,rate:1,lastBackup:'',brief:true,briefTime:'08:00',hourRate:0,quoteUrl:'',weekly:true,timer:null,syncNudgeOff:false,lastUpdCheck:0,tpl:null,theme:'auto',zoom:100,ivaPct:21,ivaIncl:true,home:'Renedo de Piélagos',gemKey:'',gemModel:'gemini-3.8-flash',icon:null,wx:null,gToken:'',gId:'',gKey:'',gLast:0,ntfy:false,ntfyTopic:'',ntfyHide:false,ntfyMap:{}}}; }
 function load(){
   try{
     const d = JSON.parse(localStorage.getItem(KEY));
@@ -223,8 +229,10 @@ function viewHoy(){
   const nEv = items.filter(i=>i.k==='ev').length;
   const nTa = items.filter(i=>i.k==='ta'&&!i.o.done).length + od.filter(x=>x.kind!=='llamada').length;
   const nLl = items.filter(i=>i.k==='ll'&&!i.o.done).length + od.filter(x=>x.kind==='llamada').length + un.filter(x=>x.kind==='llamada').length;
-  let h = `<header class="top"><div class="hd"><div><div class="brand">🎙 Rita · tu asistente personal</div><h1>${esc(saludo())}</h1><p>${longDate(t)}</p></div><button class="btn sec sm" onclick="openVoice('resumen del día')">🔊 Resumen</button></div></header>
+  let h = `<header class="top"><div class="hd"><div><div class="brand">🎙 Rita · tu asistente personal${syncBadge()}</div><h1>${esc(saludo())}</h1><p>${longDate(t)}</p></div><div style="display:flex;gap:6px"><button class="btn sec sm" onclick="openSearch()">🔍</button><button class="btn sec sm" onclick="openVoice('resumen del día')">🔊 Resumen</button></div></div></header>
   <div class="stats"><div class="stat"><b>${nEv}</b><span>citas hoy</span></div><div class="stat"><b>${nTa}</b><span>tareas</span></div><div class="stat"><b>${nLl}</b><span>llamadas</span></div></div>`;
+  h += updBanner();
+  h += syncNudge();
   h += wxLine();
   h += timerCard();
   h += routeCard(today());
@@ -295,11 +303,14 @@ function viewAjustes(){
    <div class="set"><h4>Avisos en el móvil</h4><p class="note" style="margin-top:0">${npTxt}</p>
      <div class="acts" style="margin-top:8px"><button class="btn" onclick="enableNotif()">Activar avisos</button><button class="btn sec" onclick="testNotif()">Probar aviso</button></div>
      <p class="note">Estos avisos suenan con la app abierta. Para recibirlos con la app cerrada activa «Avisos con la app cerrada» (justo debajo).</p></div>
+   ${updBlock()}
+   ${displayBlock()}
    ${iconBlock()}
    ${netBlock()}
    ${syncBlock()}
    ${ntfyBlock()}
    ${bizSetBlock()}
+   ${tplBlock()}
    ${vencBlock()}
    ${importBlock()}
    ${lockBlock()}
@@ -485,7 +496,7 @@ function clientView(id){
   </div>
   <h2 style="margin-top:18px">Pendiente con este cliente</h2>
   <div class="card">${rel||'<div class="empty">Nada pendiente.</div>'}</div>
-  <div class="acts"><button class="btn sec" onclick="evForClient('${id}')">+ Cita</button><button class="btn sec" onclick="taskForm(null,{kind:'llamada',clientId:'${id}'})">+ Llamada</button><button class="btn sec" onclick="clientForm('${id}')">✏ Editar</button></div>`);
+  <div class="acts"><button class="btn sec" onclick="evForClient('${id}')">+ Cita</button><button class="btn sec" onclick="taskForm(null,{kind:'llamada',clientId:'${id}'})">+ Llamada</button><button class="btn sec" onclick="clientForm('${id}')">✏ Editar</button><button class="btn sec" onclick="clientHistory('${id}')">📜 Historial</button></div>`);
 }
 
 /* ======== Calendario (.ics) ======== */
@@ -650,7 +661,7 @@ async function idbRestore(){
 
 /* ======== SINCRONIZACIÓN (GitHub Gist, cifrado) ======== */
 const GURL = 'https://api.github.com/gists';
-let syncing = false, syncT = null, syncMsg = '';
+let syncing = false, syncT = null, syncMsg = '', syncAgain = false, syncDirty = false, changeSeq = 0, gistEtag = '', syncState = 'off';
 const te = new TextEncoder(), td = new TextDecoder();
 function b64(buf){ const a = new Uint8Array(buf); let s = ''; for(let i=0;i<a.length;i+=0x8000) s += String.fromCharCode.apply(null, a.subarray(i,i+0x8000)); return btoa(s); }
 function unb64(s){ const b = atob(s), a = new Uint8Array(b.length); for(let i=0;i<b.length;i++) a[i] = b.charCodeAt(i); return a; }
@@ -689,19 +700,26 @@ function mergeRemote(R){
   S.del = del; S.h = {};
   for(const k of COLS) for(const o of S[k]){ const {u, ...rest} = o; S.h[o.id] = JSON.stringify(rest); }
 }
-function setSyncMsg(t){ syncMsg = t; const e = $('#sync_msg'); if(e) e.textContent = t; }
+function setSyncMsg(t){
+  syncMsg = t; const e = $('#sync_msg'); if(e) e.textContent = t;
+  syncState = /^⚠/.test(t) ? 'err' : /^Sincronizando/.test(t) ? 'busy' : /^Sincronizado/.test(t) ? 'ok' : syncState; paintBadge();
+}
 async function syncNow(manual){
   const st = S.settings;
   if(!st.gToken || !st.gId || !st.gKey){ if(manual) toast('La sincronización no está activada'); return false; }
-  if(!canCrypto()){ setSyncMsg('Este navegador no permite cifrar desde aquí. Abre la app desde una dirección https.'); return false; }
-  if(syncing) return false;
-  syncing = true; setSyncMsg('Sincronizando…');
+  if(!canCrypto()){ setSyncMsg('⚠ Este navegador no permite cifrar desde aquí. Abre la app desde una dirección https.'); return false; }
+  if(syncing){ syncAgain = true; return false; }
+  syncing = true; const seq = changeSeq;
+  if(manual || syncDirty) setSyncMsg('Sincronizando…');
   try{
     const H = {Authorization:'Bearer '+st.gToken, Accept:'application/vnd.github+json'};
-    const r = await fetch(GURL+'/'+st.gId, {headers:H, cache:'no-store'});
+    const hdr = Object.assign({}, H); if(gistEtag && !manual && !syncDirty) hdr['If-None-Match'] = gistEtag;
+    const r = await fetch(GURL+'/'+st.gId, {headers:hdr, cache:'no-store'});
+    if(r.status===304){ st.gLast = Date.now(); persist(); setSyncMsg('Sincronizado a las '+hhmm()); return true; }
     if(r.status===401 || r.status===403) throw new Error('GitHub no acepta el token (¿caducó?). Desactiva y vuelve a configurar la sincronización.');
     if(r.status===404) throw new Error('No encuentro la copia en GitHub.');
     if(!r.ok) throw new Error('GitHub respondió '+r.status+'.');
+    gistEtag = r.headers.get('etag') || '';
     const j = await r.json(); const f = j.files && j.files['secretaria.dat'];
     let remote = null;
     if(f){
@@ -719,20 +737,35 @@ async function syncNow(manual){
       const body = await encPayload(sharedState(), st.gKey);
       const pr = await fetch(GURL+'/'+st.gId, {method:'PATCH', headers:Object.assign({'Content-Type':'application/json'}, H), body:JSON.stringify({files:{'secretaria.dat':{content:body}}})});
       if(!pr.ok) throw new Error('No he podido guardar en GitHub ('+pr.status+').');
+      gistEtag = pr.headers.get('etag') || '';
     }
+    if(changeSeq === seq) syncDirty = false;
     st.gLast = Date.now(); persist();
     setSyncMsg('Sincronizado a las '+hhmm());
     if(manual) toast(changed ? 'Sincronizado: he traído cambios' : 'Sincronizado ✔');
     return true;
   }catch(e){
-    setSyncMsg('⚠ '+(e && e.message && !/Failed to fetch|NetworkError/i.test(e.message) ? e.message : 'Sin conexión con GitHub. Se reintentará.'));
+    setSyncMsg('⚠ '+(e && e.message && !/Failed to fetch|NetworkError|Load failed/i.test(e.message) ? e.message : 'Sin conexión con GitHub. Se reintentará.'));
     if(manual) toast('No se ha podido sincronizar');
     return false;
-  }finally{ syncing = false; }
+  }finally{
+    syncing = false;
+    if(syncAgain){ syncAgain = false; setTimeout(() => syncNow(false), 300); }
+  }
 }
 function afterSave(){
+  syncDirty = true; changeSeq++;
   clearTimeout(syncT);
-  syncT = setTimeout(() => { syncNow(false); syncNtfy(); }, 2500);
+  syncT = setTimeout(() => { syncNow(false); syncNtfy(); }, 1200);
+}
+function paintBadge(){
+  const e = $('#sync_badge'); if(!e) return;
+  e.textContent = syncState==='busy' ? '☁ …' : syncState==='err' ? '☁ ⚠' : syncState==='ok' ? '☁ ✓' : '';
+}
+function syncBadge(){
+  if(!S.settings.gId) return '';
+  const t = syncState==='busy' ? '☁ …' : syncState==='err' ? '☁ ⚠' : syncState==='ok' ? '☁ ✓' : '☁';
+  return `<span id="sync_badge" onclick="go('ajustes')" style="margin-left:8px;cursor:pointer">${t}</span>`;
 }
 function syncBlock(){
   const st = S.settings;
@@ -1200,7 +1233,7 @@ function startListen(){
 function toggleListen(){ if(listening){ stopRec(); setStatus('Pulsa el micrófono para hablar.'); } else startListen(); }
 function stopVoice(){ voiceOpen = false; pending = null; stopRec(); try{ speechSynthesis.cancel(); }catch(_){} }
 
-const EXAMPLES = ['¿Qué tengo hoy?','Ruta de hoy','¿Quién me debe dinero?','He enviado presupuesto a Gómez de 1200 euros','Gómez me ha pagado 450 euros','Empiezo en la cancela de Marta','Termino','Necesito comprar tornillos y discos de corte','Gasolina 40 euros para la cancela de Marta','¿Cuánto llevo gastado en la cancela de Marta?','¿Cuánto he ganado este mes?','Confirma la cita con Gómez por WhatsApp','¿Qué tiempo hace mañana?','Recuérdame llamar a Gómez mañana a las 9','Anota: pedir 20 metros de perfil','Llama a Gómez','Resumen del día'];
+const EXAMPLES = ['¿Qué tengo hoy?','Ruta de hoy','¿Quién me debe dinero?','He enviado presupuesto a Gómez de 1200 euros','Gómez me ha pagado 450 euros','Informe del trimestre','Muéstrame lo de Gómez','¿Qué garantías vencen pronto?','Empiezo en la cancela de Marta','Termino','Necesito comprar tornillos y discos de corte','Gasolina 40 euros para la cancela de Marta','¿Cuánto llevo gastado en la cancela de Marta?','¿Cuánto he ganado este mes?','Confirma la cita con Gómez por WhatsApp','¿Qué tiempo hace mañana?','Recuérdame llamar a Gómez mañana a las 9','Anota: pedir 20 metros de perfil','Llama a Gómez','Resumen del día'];
 function openVoice(cmd){
   voiceOpen = true;
   sheet(`<h3>🎙️ Rita</h3>
@@ -1240,6 +1273,9 @@ function handle(raw){
   if(/(?:proxima|siguiente) (?:cita|reunion|llamada)|que es lo siguiente|que toca ahora|cuando es mi proxima/.test(F)) return nextAppt();
   if(RE_MONTH.test(F)) return monthVoice();
   if(RE_JOBCOST.test(F)) return jobCostVoice(c);
+  if(RE_INFORME.test(F)) return informeVoice(c);
+  if(RE_WARR.test(F)) return warrantyVoice();
+  if(RE_FIND.test(F)) return findVoice(c);
   if(RE_TSTOP.test(F)) return timerStopVoice();
   if(RE_TSTART.test(F)) return timerStartVoice(c);
   if(RE_HOURSQ.test(F)) return hoursQVoice(c);
@@ -1459,7 +1495,7 @@ function briefing(){
   reply(s);
 }
 function help(){
-  reply('Puedes decirme, por ejemplo: «¿Qué tengo hoy?». «Recuérdame llamar a Gómez mañana a las nueve». «Apunta cita con Marta el viernes a las cinco y media». «Anota: pedir perfiles». «Llama a Gómez». «¿Cuál es mi próxima cita?». «Marca como hecha la llamada de Gómez». «Pospón la cita de Gómez para el lunes». «¿Qué tiempo hace mañana?». «Últimas noticias». «¿A cuánto está el dólar?». Y, si has puesto tu clave de Google, cualquier pregunta: la busco en internet. «Gómez me debe 450 euros». «He enviado presupuesto a Gómez de 1200 euros». «Gasolina 40 euros para la cancela de Marta». «¿Cuánto llevo gastado en la cancela de Marta?». «¿Cuánto he ganado este mes?». «Empiezo en la cancela de Marta», y al acabar, «termino». «Necesito comprar tornillos». «Ruta de hoy». «Confirma la cita con Gómez por WhatsApp». «Deshaz eso».');
+  reply('Puedes decirme, por ejemplo: «¿Qué tengo hoy?». «Recuérdame llamar a Gómez mañana a las nueve». «Apunta cita con Marta el viernes a las cinco y media». «Anota: pedir perfiles». «Llama a Gómez». «¿Cuál es mi próxima cita?». «Marca como hecha la llamada de Gómez». «Pospón la cita de Gómez para el lunes». «¿Qué tiempo hace mañana?». «Últimas noticias». «¿A cuánto está el dólar?». Y, si has puesto tu clave de Google, cualquier pregunta: la busco en internet. «Gómez me debe 450 euros». «He enviado presupuesto a Gómez de 1200 euros». «Gasolina 40 euros para la cancela de Marta». «¿Cuánto llevo gastado en la cancela de Marta?». «¿Cuánto he ganado este mes?». «Empiezo en la cancela de Marta», y al acabar, «termino». «Necesito comprar tornillos». «Informe del trimestre». «Muéstrame lo de Gómez». «¿Qué garantías vencen pronto?». «Ruta de hoy». «Confirma la cita con Gómez por WhatsApp». «Deshaz eso».');
 }
 function undo(){
   if(!lastAction) return reply('No tengo nada que deshacer.');
@@ -1958,6 +1994,7 @@ function upsertJobTasks(j){
   const cl = client(j.clientId);
   setTask('jf-'+j.id, j.status==='presupuestado' && j.sentDate ? {title:'Presupuesto'+jl(j)+(cl?' de '+waName(cl):'')+(j.amount?' ('+eur(j.amount)+')':'')+': preguntar si lo ha visto', due:quoteDue(j)} : null);
   setTask('jv-'+j.id, (j.status==='terminado' || j.status==='cobrado') && +j.revMonths > 0 && j.doneDate ? {title:'Ofrecer revisión'+jl(j)+(cl?' a '+waName(cl):''), due:addMonthsISO(j.doneDate, +j.revMonths)} : null);
+  setTask('jg-'+j.id, (j.status==='terminado' || j.status==='cobrado') && +j.warrantyMonths > 0 && j.doneDate ? {kind:'tarea', title:'Termina la garantía'+jl(j)+(cl?' de '+waName(cl):''), due:addMonthsISO(j.doneDate, +j.warrantyMonths), remind:'43200', notes:'Garantía de '+j.warrantyMonths+' meses'} : null);
   setTask('jc-'+j.id, j.status==='terminado' && jobRest(j) > 0 ? {title:'Cobrar'+jl(j)+(cl?' a '+waName(cl):'')+': '+eur(jobRest(j)), due:j.dueDate || addDays(j.doneDate || today(), 15), prio:'alta'} : null);
 }
 
@@ -1974,7 +2011,7 @@ function viewClientes(){
 }
 function jobRow(j){
   const cl = client(j.clientId), rest = jobRest(j);
-  const sub = [cl && cl.name, j.status==='presupuestado' && j.sentDate ? 'enviado '+relDay(j.sentDate) : '', j.status==='terminado' && rest > 0 ? 'te debe '+eur(rest) : '', jobMarginTxt(j)].filter(Boolean).join(' · ');
+  const sub = [cl && cl.name, j.status==='presupuestado' && j.sentDate ? 'enviado '+relDay(j.sentDate) : '', j.status==='terminado' && rest > 0 ? 'te debe '+eur(rest) : '', jobMarginTxt(j), warrantyEnd(j) ? 'garantía hasta '+shortDate(warrantyEnd(j)) : ''].filter(Boolean).join(' · ');
   return `<div class="row" onclick="jobForm('${j.id}')"><span class="ic">💶</span><div class="mid"><div class="t">${esc(j.title)}</div><div class="s">${esc(sub)||'&nbsp;'}</div></div>
    <div style="text-align:right;flex:none"><div style="font-weight:700">${eur(j.amount)}</div><div style="font-size:12px;font-weight:700;color:${JCOL[j.status]}">${JSTAT[j.status]}</div></div></div>`;
 }
@@ -2002,10 +2039,11 @@ function jobForm(id, pre){
   <div><label>Cobro previsto</label><input id="j_due" type="date" value="${j.dueDate||''}"></div></div>
   <label>Notas y medidas</label><textarea id="j_notes" placeholder="Ej: hueco 2,40 × 2,10, guía a la izquierda">${esc(j.notes)}</textarea>
   <label>Ofrecer revisión al terminar</label><select id="j_rev"><option value="">No</option>${[6,12,24].map(m => `<option value="${m}" ${+j.revMonths===m?'selected':''}>A los ${m} meses</option>`).join('')}</select>
+  <label>Garantía de la instalación</label><select id="j_war"><option value="">Sin garantía</option>${[12,24,36,60].map(m => `<option value="${m}" ${+j.warrantyMonths===m?'selected':''}>${m/12} ${m>12?'años':'año'}</option>`).join('')}</select>
   ${id ? cuentasBlock(j) : ''}
   ${photoBlock()}
   <div class="acts"><button class="btn" onclick="saveJob(${id?`'${id}'`:'null'})">Guardar</button><button class="btn sec" onclick="closeSheet()">Cancelar</button></div>
-  ${id?`<div class="acts">${jobWaBtn(j)}<button class="btn bad" onclick="delJob('${id}')">Borrar</button></div>`:''}`);
+  ${id?`<div class="acts">${jobWaBtn(j)}${revWaBtn(j)}<button class="btn bad" onclick="delJob('${id}')">Borrar</button></div>`:''}`);
   hydratePhotos();
 }
 function cuentasBlock(j){
@@ -2027,7 +2065,7 @@ function saveJob(id){
   const status = val('j_status'); let paid = parseFloat(val('j_paid')) || 0; const amount = parseFloat(val('j_amount')) || 0;
   if(status==='cobrado' && paid < amount) paid = amount;
   const o = {id:id||uid(), title, clientId:val('j_client'), amount, status, sentDate:val('j_sent') || (status==='presupuestado' ? today() : ''), followDays:+val('j_follow')||7,
-    dueDate:val('j_due'), paid, notes:val('j_notes').trim(), photos:phCtx.list.slice(), doneDate:(old && old.doneDate) || '', revMonths:+val('j_rev')||0, payments:(old && old.payments ? old.payments.slice() : [])};
+    dueDate:val('j_due'), paid, notes:val('j_notes').trim(), photos:phCtx.list.slice(), doneDate:(old && old.doneDate) || '', revMonths:+val('j_rev')||0, warrantyMonths:+val('j_war')||0, payments:(old && old.payments ? old.payments.slice() : [])};
   if(status==='terminado' && !(old && old.status==='terminado')) o.doneDate = today();
   if((status==='terminado' || status==='cobrado') && !o.doneDate) o.doneDate = today();
   const delta = paid - ((old && +old.paid) || 0); if(delta > 0) o.payments.push({date:today(), amount:delta});
@@ -2061,7 +2099,7 @@ function viewGastos(){
    <div class="stats"><div class="stat"><b style="font-size:18px;color:var(--ok)">${eur(ms.inc)}</b><span>cobrado</span></div><div class="stat"><b style="font-size:18px">${eur(total)}</b><span>gastado</span></div><div class="stat"><b style="font-size:18px;color:${ms.net<0?'var(--bad)':'var(--pri)'}">${eur(ms.net)}</b><span>queda</span></div></div>
    <p class="note">${Object.entries(by).map(([k,v]) => k+' '+eur(v)).join(' · ') || 'Sin gastos este mes'} · «Cobrado» cuenta los cobros anotados con fecha.</p>
    <div style="height:10px"></div>` + list(rows, 'Sin gastos este mes. Di «gasolina 40 euros» o pulsa «+ Gasto».') +
-   `<div class="acts"><button class="btn" onclick="expForm()">+ Gasto</button><button class="btn sec" onclick="exportExpensesCsv()">📊 Exportar mes (Excel)</button></div>`;
+   `<div class="acts"><button class="btn" onclick="expForm()">+ Gasto</button><button class="btn sec" onclick="exportExpensesCsv()">📊 Exportar mes (Excel)</button><button class="btn sec" onclick="informeSheet()">📑 Informe para el gestor</button></div>`;
 }
 function expForm(id, pre){
   expReturn = null;
@@ -2096,13 +2134,6 @@ function exportExpensesCsv(){
 
 /* --- WhatsApp con el mensaje ya escrito --- */
 const waLink = (cl, text) => 'https://wa.me/'+waNum(cl.phone)+'?text='+encodeURIComponent(text);
-function waTextEvent(e, cl){ return 'Hola '+waName(cl)+', te confirmo la visita '+spokenDay(e.date)+(e.time?' a las '+e.time:'')+(e.place?' en '+e.place:'')+'. ¡Hasta entonces! Un saludo, '+(S.settings.name||'')+'.'; }
-function jobWaText(j){
-  const n = waName(client(j.clientId)), me = S.settings.name || '', rest = jobRest(j);
-  if(j.status==='presupuestado') return 'Hola '+n+', ¿has podido revisar el presupuesto de «'+j.title+'»'+(j.amount?' ('+eur(j.amount)+')':'')+'? Quedo atento a tu respuesta. Un saludo, '+me+'.';
-  if(j.status==='terminado' && rest > 0) return 'Hola '+n+', te recuerdo que queda pendiente el pago de '+eur(rest)+' del trabajo «'+j.title+'». Gracias. Un saludo, '+me+'.';
-  return 'Hola '+n+', te escribo por el trabajo «'+j.title+'». Un saludo, '+me+'.';
-}
 function jobWaBtn(j){ const cl = client(j.clientId); return cl && cl.phone ? `<a class="btn ok" style="text-decoration:none" target="_blank" rel="noopener" href="${esc(waLink(cl, jobWaText(j)))}">💬 WhatsApp</a>` : ''; }
 function waBtnEv(e){ const cl = client(e.clientId); return cl && cl.phone ? `<a class="btn ok" style="text-decoration:none" target="_blank" rel="noopener" href="${esc(waLink(cl, waTextEvent(e, cl)))}">💬 Confirmar por WhatsApp</a>` : ''; }
 
@@ -2554,7 +2585,7 @@ function bizSetBlock(){
   return `<div class="set"><h4>💼 Tu negocio</h4>
    <label style="margin-top:0">Precio de tu hora (€)</label><input type="number" inputmode="decimal" step="0.5" value="${st.hourRate||''}" placeholder="Ej: 30" onchange="S.settings.hourRate=parseFloat(this.value)||0;persist();toast('Guardado')">
    <p class="note">Con esto, Rita descuenta el valor de tu tiempo en el margen de cada trabajo.</p>
-   <label>Dirección de tu presupuesto rápido</label><input type="url" value="${esc(st.quoteUrl||'')}" placeholder="https://…" onchange="S.settings.quoteUrl=this.value.trim();persist();toast('Guardado')"></div>`;
+   <label>Dirección de tu presupuesto rápido</label><input type="url" value="${esc(st.quoteUrl||'')}" placeholder="https://…" onchange="S.settings.quoteUrl=this.value.trim();persist();toast('Guardado')">${ivaBlock()}</div>`;
 }
 
 /* --- lista de material --- */
@@ -2748,6 +2779,258 @@ function quoteImportGo(){
   save(); closeSheet(); bizTab = 'jobs'; tab = 'clientes'; render(); toast(n+(n===1?' trabajo importado':' trabajos importados'));
 }
 
+/* ======== HISTORIAL, INFORME, BUSCADOR, GARANTÍAS, MENSAJES Y PANTALLA ======== */
+
+/* --- mensajes de WhatsApp editables --- */
+const TPL_DEF = {
+  visit:'Hola {cliente}, te confirmo la visita {fecha}[ a las {hora}][ en {lugar}]. ¡Hasta entonces! Un saludo, {yo}.',
+  quote:'Hola {cliente}, ¿has podido revisar el presupuesto de «{trabajo}»[ ({importe})]? Quedo atento a tu respuesta. Un saludo, {yo}.',
+  debt:'Hola {cliente}, te recuerdo que queda pendiente el pago de {pendiente} del trabajo «{trabajo}». Gracias. Un saludo, {yo}.',
+  review:'Hola {cliente}, ya ha pasado un tiempo desde la instalación de «{trabajo}». ¿Te gustaría que pasara a hacerle una revisión? Un saludo, {yo}.',
+  generic:'Hola {cliente}, te escribo por «{trabajo}». Un saludo, {yo}.'
+};
+const TPL_NAMES = {visit:'Confirmar una visita', quote:'Preguntar por un presupuesto', debt:'Reclamar un cobro', review:'Ofrecer una revisión', generic:'Mensaje general'};
+function tplFill(key, v){
+  let t = (S.settings.tpl && S.settings.tpl[key]) || TPL_DEF[key];
+  t = t.replace(/\[([^\]]*)\]/g, (m, inner) => { const ks = Array.from(inner.matchAll(/\{(\w+)\}/g)).map(x => x[1]); return ks.every(k => String(v[k] == null ? '' : v[k]).trim()) ? inner : ''; });
+  t = t.replace(/\{(\w+)\}/g, (m, k) => v[k] == null ? '' : String(v[k]));
+  return t.replace(/\s+([,.;!?])/g, '$1').replace(/ {2,}/g, ' ').trim();
+}
+function waTextEvent(e, cl){ return tplFill('visit', {cliente:waName(cl), fecha:spokenDay(e.date), hora:e.time||'', lugar:e.place||'', yo:S.settings.name||''}); }
+function jobWaText(j, key){
+  const rest = jobRest(j);
+  const k = key || (j.status==='presupuestado' ? 'quote' : (j.status==='terminado' && rest > 0) ? 'debt' : 'generic');
+  return tplFill(k, {cliente:waName(client(j.clientId)), trabajo:j.title, importe:j.amount ? eur(j.amount) : '', pendiente:eur(rest), yo:S.settings.name||''});
+}
+function revWaBtn(j){
+  const cl = client(j.clientId);
+  return (cl && cl.phone && (j.status==='terminado' || j.status==='cobrado')) ? `<a class="btn sec" style="text-decoration:none" target="_blank" rel="noopener" href="${esc(waLink(cl, jobWaText(j,'review')))}">💬 Ofrecer revisión</a>` : '';
+}
+function tplSave(k, v){ S.settings.tpl = Object.assign({}, S.settings.tpl, {[k]:v}); persist(); toast('Mensaje guardado'); }
+function tplReset(k){ if(S.settings.tpl){ delete S.settings.tpl[k]; persist(); } render(); }
+function tplBlock(){
+  return `<div class="set"><h4>💬 Mensajes de WhatsApp</h4><p class="note" style="margin-top:0">Así escribe Rita por ti. Cambia el texto como quieras. Datos que puedes usar: <b>{cliente} {fecha} {hora} {lugar} {trabajo} {importe} {pendiente} {yo}</b>. Lo que va entre <b>[corchetes]</b> solo sale si hay dato.</p>
+  ${Object.keys(TPL_DEF).map(k => `<label>${TPL_NAMES[k]}</label><textarea style="min-height:78px" onchange="tplSave('${k}',this.value)">${esc((S.settings.tpl && S.settings.tpl[k]) || TPL_DEF[k])}</textarea><div class="acts" style="margin-top:4px"><button class="btn sec sm" onclick="tplReset('${k}')">↺ Original</button></div>`).join('')}</div>`;
+}
+
+/* --- garantías --- */
+const warrantyEnd = j => (+j.warrantyMonths > 0 && j.doneDate) ? addMonthsISO(j.doneDate, +j.warrantyMonths) : '';
+const RE_WARR = /garantias?\b.*(?:vencen|caducan|terminan|acaban|pronto|quedan)|que garantias|garantias (?:que|por)/;
+function warrantyVoice(){
+  const lim = addDays(today(), 150);
+  const l = S.jobs.filter(j => warrantyEnd(j) && warrantyEnd(j) >= today() && warrantyEnd(j) <= lim).sort((a,b) => warrantyEnd(a).localeCompare(warrantyEnd(b)));
+  if(!l.length) return reply('No tienes garantías que acaben en los próximos cinco meses.');
+  reply('Garantías que acaban pronto: '+l.slice(0,6).map(j => (waName(client(j.clientId)) || j.title)+', '+spokenDay(warrantyEnd(j))).join('; ')+'.');
+}
+
+/* --- historial por cliente --- */
+async function hydrateImgs(root){
+  for(const im of Array.from((root || document).querySelectorAll('img[data-p]'))){
+    try{ const b = await photoGet(im.dataset.p); if(b) im.src = URL.createObjectURL(b); }catch(_){}
+  }
+}
+function clientStats(id){
+  const jobs = S.jobs.filter(j => j.clientId===id && j.status!=='perdido');
+  const billed = jobs.filter(j => j.status!=='presupuestado').reduce((s,j) => s + (+j.amount||0), 0);
+  const paid = jobs.reduce((s,j) => s + (+j.paid||0), 0), owed = jobs.filter(j => j.status==='terminado').reduce((s,j) => s + jobRest(j), 0);
+  return {n:jobs.length, billed, paid, owed};
+}
+function clientHistory(id){
+  const c = client(id); if(!c) return;
+  const jobs = S.jobs.filter(j => j.clientId===id), st = clientStats(id);
+  const en = [];
+  S.events.filter(e => e.clientId===id).forEach(e => en.push({d:e.date, ic:'📅', t:e.title, s:(e.time||'')+(e.place?' · '+e.place:''), fn:`evForm('${e.id}')`}));
+  jobs.forEach(j => { en.push({d:j.sentDate || j.doneDate || '', ic:'💶', t:j.title, s:JSTAT[j.status]+' · '+eur(j.amount)+(warrantyEnd(j) ? ' · garantía hasta '+shortDate(warrantyEnd(j)) : ''), fn:`jobForm('${j.id}')`});
+    (j.payments||[]).forEach(p => en.push({d:p.date, ic:'✅', t:'Cobro de '+eur(p.amount), s:j.title, fn:`jobForm('${j.id}')`})); });
+  S.expenses.filter(e => e.clientId===id).forEach(e => en.push({d:e.date, ic:'🧾', t:e.concept+' · '+eur(e.amount), s:e.cat, fn:`expForm('${e.id}')`}));
+  en.sort((a,b) => (b.d||'').localeCompare(a.d||''));
+  const photos = jobs.flatMap(j => j.photos||[]).slice(0,12);
+  const first = en.map(x => x.d).filter(Boolean).sort()[0];
+  sheet(`<h3>📜 ${esc(c.name)}</h3>
+  <div class="stats"><div class="stat"><b style="font-size:17px">${st.n}</b><span>${st.n===1?'trabajo':'trabajos'}</span></div><div class="stat"><b style="font-size:17px">${eur(st.billed)}</b><span>facturado</span></div><div class="stat"><b style="font-size:17px;color:${st.owed?'var(--bad)':'var(--ok)'}">${eur(st.owed)}</b><span>pendiente</span></div></div>
+  <p class="note">${first ? 'Cliente desde '+shortDate(first)+'. ' : ''}Cobrado en total: ${eur(st.paid)}.</p>
+  ${photos.length ? `<div class="phgrid" id="hist_ph">${photos.map(p => `<button class="ph"><img data-p="${p}" alt=""></button>`).join('')}</div>` : ''}
+  <h2 style="margin-top:14px">Todo lo que has hecho</h2>
+  <div class="card">${en.slice(0,60).map(x => `<div class="row" onclick="${x.fn}"><span class="ic">${x.ic}</span><div class="mid"><div class="t">${esc(x.t)}</div><div class="s">${esc(x.s||'')}</div></div><div class="tm" style="font-size:12px;color:var(--mut)">${x.d ? shortDate(x.d) : ''}</div></div>`).join('') || '<div class="empty">Todavía no hay nada con este cliente.</div>'}</div>
+  <div class="acts"><button class="btn sec" onclick="clientView('${id}')">‹ Volver a la ficha</button><button class="btn sec" onclick="closeSheet()">Cerrar</button></div>`);
+  hydrateImgs($('#pane'));
+}
+
+/* --- informe para el gestor --- */
+let infKey = '';
+const fmtN = n => (Math.round(n*100)/100).toLocaleString('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2});
+const csvN = n => String(Math.round(n*100)/100).replace('.', ',');
+function periodList(){
+  const n = new Date(), out = [], y = n.getFullYear(), q = Math.floor(n.getMonth()/3);
+  for(let i=0;i<4;i++){ let qq = q-i, yy = y; while(qq < 0){ qq += 4; yy--; } out.push({k:'q'+yy+'-'+qq, label:(qq+1)+'º trimestre '+yy+(i===0?' (en curso)':''), from:iso(new Date(yy,qq*3,1)), to:iso(new Date(yy,qq*3+3,0))}); }
+  for(let i=0;i<6;i++){ const f = new Date(n.getFullYear(), n.getMonth()-i, 1); out.push({k:'m'+iso(f).slice(0,7), label:cap(MESES[f.getMonth()])+' '+f.getFullYear()+(i===0?' (en curso)':''), from:iso(f), to:iso(new Date(f.getFullYear(), f.getMonth()+1, 0))}); }
+  return out;
+}
+function informeData(p){
+  const pays = []; S.jobs.forEach(j => (j.payments||[]).forEach(x => { if(x.date >= p.from && x.date <= p.to) pays.push({date:x.date, cliente:(client(j.clientId)||{}).name||'', trabajo:j.title, importe:+x.amount||0}); }));
+  pays.sort((a,b) => a.date.localeCompare(b.date));
+  const exps = S.expenses.filter(e => e.date >= p.from && e.date <= p.to).sort((a,b) => a.date.localeCompare(b.date)).map(e => ({date:e.date, concepto:e.concept, cat:e.cat, trabajo:(S.jobs.find(j => j.id===e.jobId)||{}).title||'', importe:+e.amount||0}));
+  const inc = pays.reduce((s,x) => s + x.importe, 0), exp = exps.reduce((s,x) => s + x.importe, 0);
+  const r = S.settings.ivaPct == null ? 21 : +S.settings.ivaPct, incl = S.settings.ivaIncl !== false;
+  const rep = incl ? inc - inc/(1+r/100) : inc*r/100, sop = incl ? exp - exp/(1+r/100) : exp*r/100;
+  const legacy = S.jobs.filter(j => (+j.paid||0) - (j.payments||[]).reduce((s,x) => s + (+x.amount||0), 0) > 0.01).length;
+  return {pays, exps, inc, exp, net:inc-exp, rep, sop, iva:rep-sop, r, incl, legacy};
+}
+function informeText(P, D){
+  return 'Resumen '+P.label.replace(' (en curso)','')+': cobrado '+eur(D.inc)+', gastado '+eur(D.exp)+', beneficio '+eur(D.net)+'. IVA aproximado a ingresar: '+eur(D.iva)+' (orientativo).';
+}
+function informeSheet(key){
+  infKey = key || infKey || periodList()[0].k;
+  sheet(`<h3>📑 Informe para el gestor</h3>
+  <label style="margin-top:4px">Periodo</label><select id="inf_p" onchange="infKey=this.value;informeRender()">${periodList().map(p => `<option value="${p.k}" ${p.k===infKey?'selected':''}>${p.label}</option>`).join('')}</select>
+  <div id="inf_body"></div>
+  <div class="acts"><button class="btn" onclick="informeCsv()">📊 Excel</button><button class="btn sec" onclick="informePrint()">🖨 PDF / imprimir</button><a id="inf_wa" class="btn ok" style="text-decoration:none" target="_blank" rel="noopener">💬 Resumen</a></div>
+  <div class="acts"><button class="btn sec" onclick="closeSheet()">Cerrar</button></div>`);
+  informeRender();
+}
+function informeCur(){ const l = periodList(); const P = l.find(p => p.k===infKey) || l[0]; return {P, D:informeData(P)}; }
+function informeRender(){
+  const {P, D} = informeCur(); const b = $('#inf_body'); if(!b) return;
+  b.innerHTML = `<div class="stats"><div class="stat"><b style="font-size:17px;color:var(--ok)">${eur(D.inc)}</b><span>cobrado</span></div><div class="stat"><b style="font-size:17px">${eur(D.exp)}</b><span>gastado</span></div><div class="stat"><b style="font-size:17px;color:${D.net<0?'var(--bad)':'var(--pri)'}">${eur(D.net)}</b><span>beneficio</span></div></div>
+  <p class="note">IVA repercutido aprox. <b>${eur(D.rep)}</b> · soportado aprox. <b>${eur(D.sop)}</b> · a ingresar aprox. <b>${eur(D.iva)}</b><br>(al ${D.r}%, importes ${D.incl?'con':'sin'} IVA incluido; puedes cambiarlo en Ajustes → 💼). Es orientativo: confírmalo con tu gestor.${D.legacy ? '<br>⚠ Hay '+D.legacy+' trabajos con cobros anteriores sin fecha que no entran en este informe.' : ''}</p>
+  <p class="note">${D.pays.length} cobros y ${D.exps.length} gastos en el periodo.</p>`;
+  const a = $('#inf_wa'); if(a) a.href = 'https://wa.me/?text='+encodeURIComponent(informeText(P, D));
+}
+function informeCsv(){
+  const {P, D} = informeCur(); const rows = [];
+  rows.push(['INFORME', P.label.replace(' (en curso)',''), P.from+' a '+P.to], []);
+  rows.push(['INGRESOS (cobros)']); rows.push(['Fecha','Cliente','Trabajo','Importe (€)']);
+  D.pays.forEach(x => rows.push([x.date, x.cliente, x.trabajo, csvN(x.importe)])); rows.push(['Total cobrado','','',csvN(D.inc)], []);
+  rows.push(['GASTOS']); rows.push(['Fecha','Concepto','Categoría','Trabajo','Importe (€)']);
+  D.exps.forEach(x => rows.push([x.date, x.concepto, x.cat, x.trabajo, csvN(x.importe)])); rows.push(['Total gastos','','','',csvN(D.exp)], []);
+  rows.push(['RESUMEN (orientativo)']); rows.push(['Beneficio','',csvN(D.net)]);
+  rows.push(['IVA repercutido aprox. ('+D.r+'%)','',csvN(D.rep)], ['IVA soportado aprox.','',csvN(D.sop)], ['IVA a ingresar aprox.','',csvN(D.iva)]);
+  rows.push(['Importes '+(D.incl?'con':'sin')+' IVA incluido. Confirmar con el gestor.']);
+  download('informe-'+P.label.replace(/ \(en curso\)/,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'')+'.csv', csv(rows), 'text/csv;charset=utf-8'); toast('Informe exportado para Excel');
+}
+function informeHtml(P, D){
+  const tr = a => '<tr>'+a.map((x,i) => '<td'+(/^\d/.test(String(x)) && i === a.length-1 ? ' style="text-align:right"' : '')+'>'+esc(x)+'</td>').join('')+'</tr>';
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Informe ${esc(P.label)}</title><style>body{font:14px system-ui,Arial;margin:24px;color:#111}h1{font-size:20px;margin:0}h2{font-size:15px;margin:18px 0 6px}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;padding:5px 6px;text-align:left}th{background:#f2f4f8}.r{text-align:right}.s{color:#555;font-size:12px}</style></head><body>
+  <h1>Informe · ${esc(P.label.replace(' (en curso)',''))}</h1><div class="s">${esc(S.settings.name||'')} · del ${P.from} al ${P.to}</div>
+  <h2>Ingresos (cobros)</h2><table><tr><th>Fecha</th><th>Cliente</th><th>Trabajo</th><th class="r">Importe</th></tr>${D.pays.map(x => tr([x.date, x.cliente, x.trabajo, fmtN(x.importe)+' €'])).join('')}<tr><th colspan="3">Total cobrado</th><th class="r">${fmtN(D.inc)} €</th></tr></table>
+  <h2>Gastos</h2><table><tr><th>Fecha</th><th>Concepto</th><th>Categoría</th><th>Trabajo</th><th class="r">Importe</th></tr>${D.exps.map(x => tr([x.date, x.concepto, x.cat, x.trabajo, fmtN(x.importe)+' €'])).join('')}<tr><th colspan="4">Total gastos</th><th class="r">${fmtN(D.exp)} €</th></tr></table>
+  <h2>Resumen (orientativo)</h2><table><tr><td>Beneficio</td><td class="r"><b>${fmtN(D.net)} €</b></td></tr><tr><td>IVA repercutido aprox. (${D.r}%)</td><td class="r">${fmtN(D.rep)} €</td></tr><tr><td>IVA soportado aprox.</td><td class="r">${fmtN(D.sop)} €</td></tr><tr><td><b>IVA a ingresar aprox.</b></td><td class="r"><b>${fmtN(D.iva)} €</b></td></tr></table>
+  <p class="s">Importes ${D.incl?'con':'sin'} IVA incluido. Cálculo orientativo: confírmalo con tu gestor.</p></body></html>`;
+}
+function informePrint(){
+  const {P, D} = informeCur(); const f = document.createElement('iframe');
+  f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'; document.body.appendChild(f);
+  const d = f.contentDocument; d.open(); d.write(informeHtml(P, D)); d.close();
+  setTimeout(() => { try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(_){ toast('No he podido abrir la impresión: usa Excel'); } setTimeout(() => f.remove(), 60000); }, 400);
+}
+const RE_INFORME = /(?:informe|cuentas)\b.*\b(?:mes|trimestre|gestor)\b|resumen para el gestor|numeros del (?:mes|trimestre)/;
+function informeVoice(c){
+  const q = /trimestre/.test(c.f); const l = periodList();
+  const P = q ? (/pasado|anterior/.test(c.f) ? l[1] : l[0]) : (/pasado|anterior/.test(c.f) ? l[5] : l[4]); const D = informeData(P);
+  reply((q?'En el ':'En ')+P.label.replace(' (en curso)','')+' has cobrado '+eur(D.inc)+', gastado '+eur(D.exp)+' y te quedan '+eur(D.net)+'. IVA aproximado a ingresar: '+eur(D.iva)+', orientativo.', [{label:'📑 Abrir informe', fn:() => informeSheet(P.k)}]);
+}
+function ivaBlock(){
+  const st = S.settings;
+  return `<label>IVA para los informes (%)</label><input type="number" inputmode="decimal" step="1" value="${st.ivaPct == null ? 21 : st.ivaPct}" onchange="S.settings.ivaPct=parseFloat(this.value);persist();toast('Guardado')">
+   <label class="tg" style="text-transform:none;font-size:15px;color:var(--tx)"><input type="checkbox" ${st.ivaIncl !== false ? 'checked' : ''} onchange="S.settings.ivaIncl=this.checked;persist()">Mis importes ya llevan el IVA incluido</label>`;
+}
+
+/* --- buscador global --- */
+function openSearch(q){
+  sheet(`<h3>🔍 Buscar en Rita</h3><input id="gs_q" placeholder="Cliente, trabajo, nota, gasto, material…" value="${esc(q||'')}" oninput="runSearch()" autocomplete="off" enterkeyhint="search"><div id="gs_res"></div><div class="acts"><button class="btn sec" onclick="closeSheet()">Cerrar</button></div>`);
+  runSearch(); setTimeout(() => { const e = $('#gs_q'); if(e){ e.focus(); } }, 60);
+}
+function runSearch(){
+  const terms = fold(val('gs_q')).split(/\s+/).filter(Boolean), out = $('#gs_res'); if(!out) return;
+  if(!terms.length){ out.innerHTML = '<p class="note">Escribe para buscar en clientes, citas, trabajos, tareas, notas, gastos y material.</p>'; return; }
+  const hit = s => { const f = fold(s); return terms.every(t => f.includes(t)); };
+  const cn = id => (client(id)||{}).name || '';
+  const groups = [
+    ['👥 Clientes', S.clients.filter(c => hit(c.name+' '+(c.phone||'')+' '+(c.address||'')+' '+(c.notes||''))).map(c => ({ic:'👤', t:c.name, s:[c.phone,c.address].filter(Boolean).join(' · '), fn:`clientView('${c.id}')`}))],
+    ['📅 Citas', S.events.filter(e => hit(e.title+' '+cn(e.clientId)+' '+(e.place||'')+' '+(e.notes||''))).sort((a,b) => b.date.localeCompare(a.date)).map(e => ({ic:'📅', t:e.title, s:shortDate(e.date)+(e.time?' '+e.time:'')+(cn(e.clientId)?' · '+cn(e.clientId):''), fn:`evForm('${e.id}')`}))],
+    ['💶 Trabajos', S.jobs.filter(j => hit(j.title+' '+cn(j.clientId)+' '+(j.notes||'')+' '+JSTAT[j.status])).map(j => ({ic:'💶', t:j.title, s:JSTAT[j.status]+' · '+eur(j.amount)+(cn(j.clientId)?' · '+cn(j.clientId):''), fn:`jobForm('${j.id}')`}))],
+    ['📝 Tareas', S.tasks.filter(t => hit(t.title+' '+cn(t.clientId)+' '+(t.notes||''))).map(t => ({ic:t.kind==='llamada'?'📞':'📝', t:t.title, s:(t.done?'hecha · ':'')+(t.due?shortDate(t.due):'sin fecha'), fn:`taskForm('${t.id}')`}))],
+    ['🗒️ Notas', S.notes.filter(n => hit(n.text)).map(n => ({ic:'🗒️', t:n.text.slice(0,80), s:'', fn:`noteForm('${n.id}')`}))],
+    ['🧾 Gastos', S.expenses.filter(e => hit(e.concept+' '+e.cat+' '+cn(e.clientId))).sort((a,b) => b.date.localeCompare(a.date)).map(e => ({ic:'🧾', t:e.concept+' · '+eur(e.amount), s:shortDate(e.date)+' · '+e.cat, fn:`expForm('${e.id}')`}))],
+    ['🛒 Material', S.shop.filter(x => hit(x.text)).map(x => ({ic:'🛒', t:x.text, s:x.done?'comprado':'por comprar', fn:`bizTab='shop';tab='clientes';closeSheet();render()`}))]
+  ];
+  const total = groups.reduce((s,g) => s + g[1].length, 0);
+  out.innerHTML = total ? groups.filter(g => g[1].length).map(([title, items]) => `<h2>${title}</h2><div class="card">${items.slice(0,8).map(x => `<div class="row" onclick="${x.fn}"><span class="ic">${x.ic}</span><div class="mid"><div class="t">${esc(x.t)}</div><div class="s">${esc(x.s||'')}</div></div></div>`).join('')}</div>${items.length>8?`<p class="note">…y ${items.length-8} más.</p>`:''}`).join('') : '<p class="note">No he encontrado nada con eso.</p>';
+}
+const RE_FIND = /^(?:encuentrame|encuentra|localiza|muestrame|ensename|busca en rita|busca en mis (?:datos|clientes|trabajos|notas))\b/;
+function findVoice(c){
+  c.take(/^(?:encuentrame|encuentra|localiza|muestrame|ensename|busca en rita|busca en mis (?:datos|clientes|trabajos|notas))\s*(?:lo de|lo del|todo lo de|todo lo del|a|al|el|la)?\s*/);
+  const t = c.o.replace(/\s+/g,' ').trim();
+  if(!t) return reply('¿Qué busco? Dime un nombre o una palabra.');
+  reply('Te abro la búsqueda de «'+t+'».'); setTimeout(() => openSearch(t), 700);
+}
+
+/* --- pantalla: tema y tamaño --- */
+function applyDisplay(){
+  const t = S.settings.theme || 'auto', h = document.documentElement;
+  if(t === 'auto') h.removeAttribute('data-theme'); else h.setAttribute('data-theme', t);
+  h.style.zoom = String((+S.settings.zoom || 100)/100);
+  const bg = getComputedStyle(h).getPropertyValue('--bg').trim(); const m = document.querySelector('meta[name="theme-color"]'); if(m && t !== 'auto' && bg) m.content = bg;
+}
+function displayBlock(){
+  const st = S.settings;
+  return `<div class="set"><h4>👁 Pantalla</h4>
+   <label style="margin-top:0">Tema</label><select onchange="S.settings.theme=this.value;persist();applyDisplay();render()">${[['auto','Automático (como el móvil)'],['light','Claro'],['dark','Oscuro'],['sun','☀ Sol: máximo contraste']].map(([v,l]) => `<option value="${v}" ${(st.theme||'auto')===v?'selected':''}>${l}</option>`).join('')}</select>
+   <label>Tamaño de letra y botones</label><select onchange="S.settings.zoom=+this.value;persist();applyDisplay()">${[[100,'Normal'],[115,'Grande'],[130,'Muy grande']].map(([v,l]) => `<option value="${v}" ${(+st.zoom||100)===v?'selected':''}>${l}</option>`).join('')}</select>
+   <p class="note">«Sol» pone fondo blanco y letras negras con bordes marcados, para verla al aire libre o con guantes puestos.</p></div>`;
+}
+
+/* ======== ACTUALIZACIONES ======== */
+const APP_VERSION = '2026-11-02.084831';
+let updState = {latest:'', checking:false, msg:''};
+const isWeb = () => /^https?:/.test(location.protocol);
+const verRe = () => new RegExp('APP_VERSION'+" = '([^']+)'");
+function updMsgText(){
+  if(!isWeb()) return 'La búsqueda automática de versiones solo funciona cuando Rita está alojada en internet (https). Mientras la uses como archivo, sustituye el archivo por el nuevo.';
+  return updState.msg || 'Pulsa «Buscar actualización» para comprobarlo.';
+}
+function refreshUpd(){ const e = $('#upd_msg'); if(e) e.innerHTML = 'Versión instalada: <b>'+esc(APP_VERSION)+'</b><br>'+esc(updMsgText()); }
+async function checkUpdate(manual){
+  if(!isWeb()){ if(manual) toast('Solo disponible cuando Rita está alojada en internet'); refreshUpd(); return; }
+  if(updState.checking) return;
+  updState.checking = true; updState.msg = 'Buscando…'; refreshUpd();
+  try{
+    const r = await fetch(location.origin + location.pathname + '?v=' + Date.now(), {cache:'no-store'});
+    const t = await r.text(); const m = verRe().exec(t);
+    S.settings.lastUpdCheck = Date.now(); persist();
+    if(m && m[1] !== APP_VERSION){ updState.latest = m[1]; updState.msg = 'Hay una versión nueva ('+m[1]+'). Pulsa «Actualizar ahora».'; if(manual) toast('Hay una versión nueva ✨'); }
+    else { updState.latest = ''; updState.msg = 'Tienes la última versión.'; if(manual) toast('Ya tienes la última versión ✔'); }
+  }catch(_){ updState.msg = 'No he podido comprobarlo (¿sin conexión?).'; if(manual) toast('No he podido comprobarlo'); }
+  finally{ updState.checking = false; refreshUpd(); if(tab === 'hoy' && !$('#sheet').classList.contains('open')) render(); }
+}
+async function applyUpdate(){
+  toast('Actualizando… tus datos no se tocan');
+  try{ if(S.settings.gId) await syncNow(false); }catch(_){}
+  persist();
+  if(isWeb()){
+    try{ const u = location.origin + location.pathname; await fetch(u + '?v=' + Date.now(), {cache:'reload'}); await fetch(u, {cache:'reload'}); }catch(_){}
+    try{
+      if('caches' in window) for(const k of await caches.keys()) await caches.delete(k);
+      if(navigator.serviceWorker) for(const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+    }catch(_){}
+  }
+  location.reload();
+}
+function updBanner(){
+  if(!updState.latest) return '';
+  return `<div class="card" style="margin-top:12px;padding:12px 14px;display:flex;gap:10px;align-items:center;border-color:var(--acc)"><div style="flex:1;font-size:14px">✨ <b>Hay una versión nueva de Rita</b></div><button class="btn ok sm" onclick="applyUpdate()">Actualizar</button></div>`;
+}
+function updBlock(){
+  return `<div class="set"><h4>⬆️ Actualizaciones</h4><p class="note" id="upd_msg" style="margin-top:0">Versión instalada: <b>${esc(APP_VERSION)}</b><br>${esc(updMsgText())}</p>
+   <div class="acts" style="margin-top:8px"><button class="btn sec" onclick="checkUpdate(true)">Buscar actualización</button>${updState.latest ? '<button class="btn ok" onclick="applyUpdate()">Actualizar ahora</button>' : ''}<button class="btn sec" onclick="applyUpdate()">Forzar actualización</button></div>
+   <p class="note">Actualizar no borra tus datos: se quedan en el móvil. Rita busca versiones nuevas sola al abrirla y te avisa en Hoy.</p></div>`;
+}
+function syncNudge(){
+  const st = S.settings;
+  if(st.gId || st.syncNudgeOff || (S.events.length + S.tasks.length + S.clients.length + S.jobs.length) < 2) return '';
+  return `<div class="card" style="margin-top:12px;padding:12px 14px;font-size:14px"><div>☁ <b>Sincroniza móvil y ordenador</b>: así tendrás los mismos datos en los dos, sin hacer nada más.</div><div class="acts" style="margin-top:8px"><button class="btn sm" onclick="syncSetup()">Configurar</button><button class="btn sec sm" onclick="S.settings.syncNudgeOff=true;persist();render()">Ahora no</button></div></div>`;
+}
+
 /* ======== Arranque ======== */
 if(/^https?:/.test(location.protocol)){
   const ml = document.createElement('link'); ml.rel = 'manifest'; ml.href = 'manifest.json'; document.head.appendChild(ml);
@@ -2755,6 +3038,7 @@ if(/^https?:/.test(location.protocol)){
 }
 setInterval(checkReminders, 20000);
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ checkReminders(); if(tab==='hoy') render(); } });
+applyDisplay();
 lockInit();
 setInterval(() => { if(S.settings.timer && tab==='hoy' && !$('#sheet').classList.contains('open')) render(); }, 60000);
 $('#mic').addEventListener('click', () => openVoice());
@@ -2766,7 +3050,11 @@ idbRestore();
 refreshWx(); setInterval(refreshWx, 30*60e3);
 applyIcon();
 setTimeout(() => { syncNow(false).then(() => syncNtfy()); }, 1200);
-setInterval(() => { syncNow(false); syncNtfy(); }, 20*60*1000);
+setInterval(() => { if(!document.hidden) syncNow(false); }, 30000);
+setInterval(() => { syncNtfy(); }, 20*60*1000);
+['focus','online','pageshow'].forEach(ev => window.addEventListener(ev, () => { syncNow(false); }));
+setTimeout(() => checkUpdate(false), 4000);
+setInterval(() => checkUpdate(false), 6*3600*1000);
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ syncNow(false); syncNtfy(); } });
 </script>
 </body>
